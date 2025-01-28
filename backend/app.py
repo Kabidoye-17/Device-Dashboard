@@ -26,12 +26,15 @@ def get_current_word():
 @app.route('/update_server', methods=['POST'])
 def webhook():
     if request.method == 'POST':
-        repo = git.Repo('/home/Kabidoye17/Device-Dashboard/')  # path to your cloned repo
-        origin = repo.remotes.origin
-        origin.pull()  # pulls the latest changes from GitHub
-        return 'Updated PythonAnywhere successfully', 200
-    else:
-        return 'Wrong event type', 400
+        try:
+            repo = git.Repo('/home/Kabidoye17/Device-Dashboard')
+            origin = repo.remotes.origin
+            origin.pull()
+            return 'Updated PythonAnywhere successfully', 200
+        except Exception as e:
+            logger.error(f'Git pull failed: {str(e)}')
+            return str(e), 500
+    return 'Wrong event type', 400
 
 if __name__ == '__main__':
     logger.info('Starting Flask application')
