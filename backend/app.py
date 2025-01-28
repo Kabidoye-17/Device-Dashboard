@@ -18,7 +18,7 @@ def home():
 def get_current_word():
     logger.info('Word endpoint accessed')
     try:
-        return {'word': 'bark'}
+        return {'word': 'lol'}
     except Exception as e:
         logger.error(f'Error in get_current_word: {str(e)}')
         return jsonify({'error': str(e)}), 500
