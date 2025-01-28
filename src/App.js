@@ -5,7 +5,7 @@ function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('/word')
+    fetch('https://kabidoye17.pythonanywhere.com/word')
       .then(res => res.json())
       .then(data => {
         setCurrentWord(data.word);
