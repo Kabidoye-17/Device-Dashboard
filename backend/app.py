@@ -35,4 +35,5 @@ def webhook():
 
 if __name__ == '__main__':
     logger.info('Starting Flask application')
+    logger.info('testing')
     app.run(debug=True)
