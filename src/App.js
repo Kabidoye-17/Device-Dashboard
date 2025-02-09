@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { apiUrl } from './config';
 
 function App() {
   const [currentWord, setCurrentWord] = useState('Loading...');
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('https://kabidoye17.pythonanywhere.com/word')
+    fetch(`${apiUrl}/word`)
       .then(res => res.json())
       .then(data => {
         setCurrentWord(data.word);
