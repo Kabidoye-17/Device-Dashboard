@@ -2,30 +2,42 @@ import React, { useState, useEffect } from 'react';
 import { apiUrl } from './config';
 
 function App() {
-  const [currentWord, setCurrentWord] = useState('Loading...');
+  const [metrics, setMetrics] = useState({
+    cpu_load: 0,
+    ram_usage: 0,
+    network_sent: 0,
+    timestamp: '-'
+  });
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch(`${apiUrl}/word`)
-      .then(res => res.json())
-      .then(data => {
-        setCurrentWord(data.word);
-      })
-      .catch(error => {
+    const fetchMetrics = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/system-metrics`);
+        const data = await response.json();
+        setMetrics(data);
+        setError(null);
+      } catch (error) {
         console.error('Error:', error);
         setError(error.message);
-      });
+      }
+    };
+
+    fetchMetrics();
   }, []);
 
   return (
-    <div className="App">
-      <header className="App-header">
-        {error ? (
-          <p>Error: {error}</p>
-        ) : (
-          <p>The current word is: {currentWord}</p>
-        )}
-      </header>
+    <div>
+      {error ? (
+        <p>Error: {error}</p>
+      ) : (
+        <div>
+          <p>CPU Load: {metrics.cpu_load}%</p>
+          <p>RAM Usage: {metrics.ram_usage}%</p>
+          <p>Network Data Sent: {metrics.network_sent} MB (since boot)</p>
+          <p>Last Updated: {metrics.timestamp}</p>
+        </div>
+      )}
     </div>
   );
 }
