@@ -26,3 +26,19 @@ class SystemMetrics:
             network_sent=round(network.bytes_sent / (1024 * 1024), 2),  # Convert bytes to MB
             timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         )
+
+@dataclass
+class CryptoTicker:
+    price: float
+    bid: float
+    ask: float
+    timestamp: str = None
+
+    @classmethod
+    def from_json(cls, data: dict):
+        return cls(
+            price=float(data['price']),
+            bid=float(data['bid']),
+            ask=float(data['ask']),
+            timestamp=( datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        )
