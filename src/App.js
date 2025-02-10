@@ -29,6 +29,7 @@ function App() {
         setError(error.message);
       }
     };
+    fetchSystemMetrics();
 
     return () => {};
   }, []);
