@@ -3,6 +3,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from logger import get_logger
 import git
+from models import SystemMetrics
 
 
 app = Flask(__name__) 
@@ -14,13 +15,20 @@ def home():
     logger.info('Home endpoint accessed')
     return {'message': 'Flask server is running!'}
 
-@app.route('/word')
-def get_current_word():
-    logger.info('Word endpoint accessed')
+
+@app.route('/system-metrics')
+def get_system_metrics():
+    logger.info('System metrics endpoint accessed')
     try:
-        return {'word': 'test'}
+        metrics = SystemMetrics.get_current_metrics()
+        return jsonify({
+            'cpu_load': metrics.cpu_load,
+            'ram_usage': metrics.ram_usage,
+            'network_sent': metrics.network_sent,
+            'timestamp': metrics.timestamp
+        })
     except Exception as e:
-        logger.error(f'Error in get_current_word: {str(e)}')
+        logger.error(f'Error fetching system metrics: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 @app.route('/update_server', methods=['POST'])
