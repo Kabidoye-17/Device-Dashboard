@@ -1,70 +1,63 @@
 import time
+from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from logger import get_logger
+from utils.logger import get_logger
 import git
-from models import SystemMetrics, CryptoTicker
-import requests
+from metric_queue.queue_manager import UploaderQueue  # Updated import path
+import atexit
 
-app = Flask(__name__) 
+app = Flask(__name__)
 CORS(app)
 logger = get_logger()
 
-@app.route('/')
-def home():
-    logger.info('Home endpoint accessed')
-    return {'message': 'Flask server is running!'}
-
+# Initialize and start queue
+uploader_queue = UploaderQueue()
+uploader_queue.start()
+logger.info("Started uploader queue")
 
 @app.route('/system-metrics')
 def get_system_metrics():
     logger.info('System metrics endpoint accessed')
     try:
-        metrics = SystemMetrics.get_current_metrics()
-        return jsonify({
-            'cpu_load': metrics.cpu_load,
-            'ram_usage': metrics.ram_usage,
-            'network_sent': metrics.network_sent,
-            'timestamp': metrics.timestamp
-        })
+        latest_data = uploader_queue.get_latest_metrics()
+        metrics = latest_data['system_metrics']
+        
+        # Transform list of measurements into expected format
+        formatted_metrics = {
+            'cpu_load': next((m['value'] for m in metrics if m['name'] == 'cpu_load'), 0),
+            'ram_usage': next((m['value'] for m in metrics if m['name'] == 'ram_usage'), 0),
+            'network_sent': next((m['value'] for m in metrics if m['name'] == 'network_sent'), 0),
+            'timestamp': next((m['timestamp'] for m in metrics), datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        }
+        return jsonify(formatted_metrics)
     except Exception as e:
         logger.error(f'Error fetching system metrics: {str(e)}')
-        logger.error('Full traceback:', exc_info=True)
         return jsonify({'error': str(e)}), 500
 
-VALID_PAIRS = ['BTC-USD', 'ETH-USD', 'DOGE-USD']
-
+# Update valid pairs list
+VALID_PAIRS = ['BTC-USD', 'ETH-USD'] 
 @app.route('/crypto-ticker/<currency_pair>')
 def get_crypto_ticker(currency_pair):
     logger.info('Crypto metrics endpoint accessed')
-    
-    if currency_pair not in VALID_PAIRS:
-        logger.warning(f'Invalid currency pair attempted: {currency_pair}')
-        return {'error': f'Invalid currency pair. Must be one of: {VALID_PAIRS}'}, 400
-        
     try:
-        response = requests.get(f'https://api.exchange.coinbase.com/products/{currency_pair}/ticker')
-        response.raise_for_status()
-        data = response.json()
+        latest_data = uploader_queue.get_latest_metrics()
+        crypto_data = latest_data['crypto_metrics'].get(currency_pair, [])
         
-        logger.info(f'Raw API response data type: {type(data)}')
-        logger.info(f'Raw API response content: {data}')
-        
-        ticker = CryptoTicker.from_json(data)
-        
-        return {
-            'price': ticker.price,
-            'bid': ticker.bid,
-            'ask': ticker.ask,
-            'timestamp': ticker.timestamp,
-            'currency_pair': currency_pair
-        }
-
+        if crypto_data:
+            # Transform list of measurements into expected format
+            formatted_crypto = {
+                'price': next((m['value'] for m in crypto_data if m['name'] == f'{currency_pair}_price'), 0),
+                'bid': next((m['value'] for m in crypto_data if m['name'] == f'{currency_pair}_bid'), 0),
+                'ask': next((m['value'] for m in crypto_data if m['name'] == f'{currency_pair}_ask'), 0),
+                'timestamp': next((m['timestamp'] for m in crypto_data), datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                'currency_pair': currency_pair
+            }
+            return jsonify(formatted_crypto)
+        return jsonify({'error': 'No data available for this currency pair'}), 404
     except Exception as e:
         logger.error(f'Error fetching crypto data: {str(e)}')
-        logger.error('Full traceback:', exc_info=True)
-        return {'error': str(e)}, 500
-
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/update_server', methods=['POST'])
 def webhook():
@@ -79,7 +72,13 @@ def webhook():
             return str(e), 500
     return 'Wrong event type', 400
 
+# Modified cleanup to use atexit instead of teardown_appcontext
+atexit.register(lambda: uploader_queue.stop())
+
 if __name__ == '__main__':
     logger.info('Starting Flask application')
-    logger.info('testing')
-    app.run(debug=True)
+    try:
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    finally:
+        uploader_queue.stop()
+        logger.info("Stopped uploader queue")
