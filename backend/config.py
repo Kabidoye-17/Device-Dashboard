@@ -2,37 +2,36 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+import logging
 
 @dataclass
 class ConsoleLoggingConfig:
-    enabled: bool
-    level: str
-    format: str
-    date_format: str
+    enabled: bool = True
+    format: str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    date_format: str = '%Y-%m-%d %H:%M:%S'
+    level: str = 'INFO'
 
     def get_level(self) -> int:
-        import logging
         return getattr(logging, self.level.upper())
 
 @dataclass
-class FileLoggingConfig(ConsoleLoggingConfig):
-    log_dir: str
-    filename: str
-    max_bytes: int
-    backup_count: int
+class FileLoggingConfig:
+    enabled: bool = True
+    log_dir: str = 'logs'
+    filename: str = 'app.log'
+    format: str = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    date_format: str = '%Y-%m-%d %H:%M:%S'
+    level: str = 'DEBUG'
+    max_bytes: int = 10_485_760  # 10MB
+    backup_count: int = 5
+
+    def get_level(self) -> int:
+        return getattr(logging, self.level.upper())
 
 @dataclass
 class LoggingConfig:
-    console_output: ConsoleLoggingConfig
-    file_output: FileLoggingConfig
+    console_output: ConsoleLoggingConfig = ConsoleLoggingConfig()
+    file_output: FileLoggingConfig = FileLoggingConfig()
 
 def load_config() -> LoggingConfig:
-    config_path = Path(__file__).parent / 'config.json'
-    with open(config_path, 'r') as f:
-        config_data = json.load(f)
-        
-    raw_logging_config = config_data.get('logging_config', {})
-    return LoggingConfig(
-        console_output=ConsoleLoggingConfig(**raw_logging_config.get('console_output', {})),
-        file_output=FileLoggingConfig(**raw_logging_config.get('file_output', {}))
-    ) 
+    return LoggingConfig()

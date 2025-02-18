@@ -11,55 +11,43 @@ function App() {
 
   const [cryptoPrices, setCryptoPrices] = useState({
     BTC: null,
-    ETH: null,
-    DOGE: null
+    ETH: null
   });
 
   const [error, setError] = useState(null);
 
-  // System metrics useEffect
+  // Combined data fetching in single useEffect
   useEffect(() => {
-    const fetchSystemMetrics = async () => {
+    const fetchAllData = async () => {
       try {
-        const response = await fetch(`${apiUrl}/system-metrics`);
-        const data = await response.json();
-        setMetrics(data);
+        // Fetch metrics
+        const metricsRes = await fetch(`${apiUrl}/system-metrics`);
+        const metricsData = await metricsRes.json();
+        if (metricsRes.ok) {
+          setMetrics(metricsData);
+        }
+
+        // Fetch all crypto pairs at once
+        const cryptoData = {};
+        for (const pair of ['BTC-USD', 'ETH-USD']) {
+          const res = await fetch(`${apiUrl}/crypto-ticker/${pair}`);
+          if (res.ok) {
+            const data = await res.json();
+            cryptoData[pair.split('-')[0]] = data;
+          }
+        }
+        
+        if (Object.keys(cryptoData).length > 0) {
+          setCryptoPrices(cryptoData);
+          setError(null);
+        }
       } catch (error) {
-        console.error('System metrics error:', error);
-        setError(error.message);
-      }
-    };
-    fetchSystemMetrics();
-
-    return () => {};
-  }, []);
-
-  // Crypto prices useEffect
-  useEffect(() => {
-    const fetchCryptoPrices = async () => {
-      try {
-        const pairs = ['BTC-USD', 'ETH-USD', 'DOGE-USD'];
-        const responses = await Promise.all(
-          pairs.map(pair => 
-            fetch(`${apiUrl}/crypto-ticker/${pair}`)
-              .then(res => res.json())
-          )
-        );
-
-        setCryptoPrices({
-          BTC: responses[0],
-          ETH: responses[1], 
-          DOGE: responses[2]
-        });
-        setError(null);
-      } catch (error) {
-        console.error('Crypto error:', error);
+        console.error('Fetch error:', error);
         setError(error.message);
       }
     };
 
-    fetchCryptoPrices();
-    return () => {};
+    fetchAllData();
   }, []);
 
   const formatPrice = (price, decimals = 2) => {
@@ -79,7 +67,7 @@ function App() {
           <p>Price: {formatPrice(data.price, decimals)}</p>
           <p>Bid: {formatPrice(data.bid, decimals)}</p>
           <p>Ask: {formatPrice(data.ask, decimals)}</p>
-          <p>Last Updated: {data.timestamp}</p>
+          <p>Last Updated: {new Date(data.timestamp).toLocaleString()}</p>
         </>
       ) : (
         <p>Loading {symbol} data...</p>
@@ -90,15 +78,23 @@ function App() {
   return (
     <div style={{ padding: '20px' }}>
       {error ? (
-        <p style={{ color: 'red' }}>Error: {error}</p>
+        <div style={{ color: 'red', textAlign: 'center', padding: '20px' }}>
+          <p>Error: {error}</p>
+          <button onClick={() => window.location.reload()}>
+            Retry Connection
+          </button>
+        </div>
       ) : (
         <>
+          <h1>Device Dashboard</h1>
           <div style={{ marginBottom: '20px' }}>
             <h2>System Metrics</h2>
-            <p>CPU Load: {metrics.cpu_load}%</p>
-            <p>RAM Usage: {metrics.ram_usage}%</p>
-            <p>Network Data Sent: {metrics.network_sent} MB</p>
-            <p>Last Updated: {metrics.timestamp}</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px' }}>
+              <div>CPU Load: {metrics.cpu_load}%</div>
+              <div>RAM Usage: {metrics.ram_usage}%</div>
+              <div>Network Sent: {metrics.network_sent} MB</div>
+              <div>Last Updated: {new Date(metrics.timestamp).toLocaleString()}</div>
+            </div>
           </div>
 
           <div>
