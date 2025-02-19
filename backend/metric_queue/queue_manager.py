@@ -1,81 +1,54 @@
-import threading
-import time
 from typing import Dict, Any
-from collections import deque
 from utils.logger import get_logger
 from collectors.system_collector import SystemCollector
 from collectors.crypto_collector import CryptoCollector
+import time
 
 logger = get_logger('QueueManager')
 
 class UploaderQueue:
-    def __init__(self, collection_interval: int = 5):
-        self.collection_interval = collection_interval
-        self.running = False
-        self.thread = None
+    def __init__(self):
         self.system_collector = SystemCollector()
         self.crypto_collector = CryptoCollector()
         self.latest_metrics: Dict[str, Any] = {
             'system_metrics': [],
             'crypto_metrics': {}
         }
-        self.metrics_queue = deque(maxlen=1000)
+        self.last_collection_time = 0
+        self.force_collection_interval = 10  # seconds
 
-    def start(self):
-        """Starts the data collection loop in a separate thread."""
-        self.running = True
-        self.thread = threading.Thread(target=self._collection_loop, daemon=True)
-        self.thread.start()
-        logger.info("Uploader queue started.")
+    def _collect_all(self) -> Dict[str, Any]:
+        """Force collection of all metrics"""
+        try:
+            # Collect system metrics
+            system_metrics = self.system_collector.collect_metrics()
+            if system_metrics:
+                self.latest_metrics['system_metrics'] = system_metrics
+                logger.debug(f"Collected system metrics: {system_metrics}")
 
-    def stop(self):
-        """Stops the data collection loop safely."""
-        self.running = False
-        if self.thread:
-            self.thread.join()
-        logger.info("Uploader queue stopped.")
+            # Collect crypto metrics
+            crypto_metrics = {}
+            for pair in self.crypto_collector.valid_pairs:
+                crypto_data = self.crypto_collector.collect_crypto_data(pair)
+                if crypto_data:
+                    crypto_metrics[pair] = crypto_data
+                    logger.debug(f"Collected {pair} data: {crypto_data}")
+            
+            self.latest_metrics['crypto_metrics'] = crypto_metrics
+            self.last_collection_time = time.time()
+            logger.info("Metrics collection completed")
 
-    def _collect_and_enqueue(self, data_type: str, data: list, pair: str = None):
-        """Adds collected data to the queue with a timestamp."""
-        self.metrics_queue.append({
-            'type': data_type,
-            'data': data,
-            'pair': pair,
-            'timestamp': time.time()
-        })
+        except Exception as e:
+            logger.error(f"Error collecting metrics: {str(e)}")
 
-    def _collection_loop(self):
-        """Continuously collects metrics and adds them to the queue."""
-        while self.running:
-            start_time = time.time()
-            try:
-                self._collect_and_enqueue('system_metrics', self.system_collector.collect_metrics())
+        return self.latest_metrics
 
-                for pair in self.crypto_collector.valid_pairs:
-                    crypto_data = self.crypto_collector.collect_crypto_data(pair)
-                    if crypto_data:
-                        self._collect_and_enqueue('crypto_metrics', crypto_data, pair)
-
-                logger.info(f"Collected metrics, queue size: {len(self.metrics_queue)}")
-
-            except Exception as e:
-                logger.error(f"Error in collection loop: {str(e)}")
-
-            elapsed_time = time.time() - start_time
-            time.sleep(10)
-
-    def get_latest_metrics(self):
-        """Retrieves the latest system and crypto metrics from the queue."""
-        latest_system = None
-        latest_crypto = {}
-
-        for entry in reversed(self.metrics_queue):
-            if entry['type'] == 'system_metrics' and not latest_system:
-                latest_system = entry['data']
-            elif entry['type'] == 'crypto_metrics':
-                latest_crypto.setdefault(entry['pair'], entry['data'])
-
-            if latest_system and len(latest_crypto) == len(self.crypto_collector.valid_pairs):
-                break
-
-        return {'system_metrics': latest_system or {}, 'crypto_metrics': latest_crypto}
+    def get_latest_metrics(self) -> Dict[str, Any]:
+        """Get latest metrics, forcing collection if too old"""
+        current_time = time.time()
+        if current_time - self.last_collection_time >= self.force_collection_interval:
+            logger.debug("Forcing collection due to stale data")
+            return self._collect_all()
+        
+        logger.debug("Returning cached metrics")
+        return self.latest_metrics

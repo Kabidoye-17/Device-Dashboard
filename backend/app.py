@@ -11,10 +11,9 @@ app = Flask(__name__)
 CORS(app)
 logger = get_logger()
 
-# Initialize and start queue
+# Initialize queue (no start needed anymore)
 uploader_queue = UploaderQueue()
-uploader_queue.start()
-logger.info("Started uploader queue")
+logger.info("Initialized metrics collector")
 
 @app.route('/system-metrics')
 def get_system_metrics():
@@ -77,8 +76,4 @@ atexit.register(lambda: uploader_queue.stop())
 
 if __name__ == '__main__':
     logger.info('Starting Flask application')
-    try:
-        app.run(debug=True, host='0.0.0.0', port=5000)
-    finally:
-        uploader_queue.stop()
-        logger.info("Stopped uploader queue")
+    app.run(debug=True, host='0.0.0.0', port=5000)
