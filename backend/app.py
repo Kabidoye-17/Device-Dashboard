@@ -1,25 +1,22 @@
-import time
 from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from utils.logger import get_logger
-import git
-from metric_queue.queue_manager import UploaderQueue  # Updated import path
-import atexit
+from metric_queue.queue_manager import UploaderQueue
 
 app = Flask(__name__)
 CORS(app)
 logger = get_logger()
 
-# Initialize queue (no start needed anymore)
-uploader_queue = UploaderQueue()
-logger.info("Initialized metrics collector")
+# Single metrics store instance
+metrics_store = UploaderQueue()
+logger.info("Initialized metrics store")
 
 @app.route('/system-metrics')
 def get_system_metrics():
     logger.info('System metrics endpoint accessed')
     try:
-        latest_data = uploader_queue.get_latest_metrics()
+        latest_data = metrics_store.get_latest_metrics()
         metrics = latest_data['system_metrics']
         
         # Transform list of measurements into expected format
@@ -40,7 +37,7 @@ VALID_PAIRS = ['BTC-USD', 'ETH-USD']
 def get_crypto_ticker(currency_pair):
     logger.info('Crypto metrics endpoint accessed')
     try:
-        latest_data = uploader_queue.get_latest_metrics()
+        latest_data = metrics_store.get_latest_metrics()
         crypto_data = latest_data['crypto_metrics'].get(currency_pair, [])
         
         if crypto_data:
@@ -58,22 +55,29 @@ def get_crypto_ticker(currency_pair):
         logger.error(f'Error fetching crypto data: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-@app.route('/update_server', methods=['POST'])
-def webhook():
-    if request.method == 'POST':
-        try:
-            repo = git.Repo('/home/Kabidoye17/Device-Dashboard')
-            origin = repo.remotes.origin
-            origin.pull()
-            return 'Updated PythonAnywhere successfully', 200
-        except Exception as e:
-            logger.error(f'Git pull failed: {str(e)}')
-            return str(e), 500
-    return 'Wrong event type', 400
+@app.route('/api/metrics/system', methods=['POST'])
+def receive_system_metrics():
+    """Endpoint to receive system metrics from local collector"""
+    try:
+        metrics = request.get_json()
+        metrics_store.update_system_metrics(metrics)
+        logger.info("Received system metrics update")
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        logger.error(f"Error receiving system metrics: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
-# Modified cleanup to use atexit instead of teardown_appcontext
-atexit.register(lambda: uploader_queue.stop())
+@app.route('/api/metrics/crypto', methods=['POST'])
+def receive_crypto_metrics():
+    """Endpoint to receive crypto metrics from local collector"""
+    try:
+        metrics = request.get_json()
+        metrics_store.update_crypto_metrics(metrics)
+        logger.info("Received crypto metrics update")
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        logger.error(f"Error receiving crypto metrics: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    logger.info('Starting Flask application')
     app.run(debug=True, host='0.0.0.0', port=5000)
