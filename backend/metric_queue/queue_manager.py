@@ -7,7 +7,32 @@ from collectors.crypto_collector import CryptoCollector
 
 logger = get_logger('QueueManager')
 
+class MetricsStore:
+    """Server-side metrics storage"""
+    def __init__(self):
+        self.latest_metrics: Dict[str, Any] = {
+            'system_metrics': [],
+            'crypto_metrics': {}
+        }
+        self.last_update_time = 0
+
+    def update_system_metrics(self, metrics: list) -> None:
+        self.latest_metrics['system_metrics'] = metrics
+        self.last_update_time = time.time()
+        logger.debug("Updated system metrics")
+
+    def update_crypto_metrics(self, metrics: dict) -> None:
+        self.latest_metrics['crypto_metrics'] = metrics
+        self.last_update_time = time.time()
+        logger.debug("Updated crypto metrics")
+
+    def get_latest_metrics(self) -> Dict[str, Any]:
+        if time.time() - self.last_update_time > 30:
+            logger.warning("Metrics are stale (>30s old")
+        return self.latest_metrics
+
 class UploaderQueue:
+    """Client-side collector and uploader"""
     def __init__(self, server_url: str, collection_interval: int = 10):
         self.server_url = server_url
         self.system_collector = SystemCollector()

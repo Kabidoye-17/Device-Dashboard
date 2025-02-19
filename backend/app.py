@@ -2,14 +2,14 @@ from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from utils.logger import get_logger
-from metric_queue.queue_manager import UploaderQueue
+from metric_queue.queue_manager import MetricsStore
 
 app = Flask(__name__)
 CORS(app)
 logger = get_logger()
 
 # Single metrics store instance
-metrics_store = UploaderQueue()
+metrics_store = MetricsStore()
 logger.info("Initialized metrics store")
 
 @app.route('/system-metrics')

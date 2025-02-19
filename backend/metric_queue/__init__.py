@@ -1,3 +1,3 @@
-from .queue_manager import UploaderQueue
+from .queue_manager import UploaderQueue, MetricsStore
 
-__all__ = ['UploaderQueue']
+__all__ = ['UploaderQueue', 'MetricsStore']
