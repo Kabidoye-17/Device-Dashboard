@@ -6,14 +6,18 @@ from metric_queue.queue_manager import MetricsStore  # Changed from UploaderQueu
 import traceback
 
 app = Flask(__name__)
-CORS(app)
+# Update CORS to explicitly allow all methods
+CORS(app, resources={
+    r"/api/*": {"origins": "*", "methods": ["GET", "POST"]},
+    r"/*": {"origins": "*", "methods": ["GET"]}
+})
 logger = get_logger()
 
 # Single metrics store instance
 metrics_store = MetricsStore()  # This doesn't need server_url parameter
 logger.info("Initialized metrics store")
 
-@app.route('/system-metrics')
+@app.route('/system-metrics', methods=["GET"])  # Explicitly allow GET
 def get_system_metrics():
     logger.info('System metrics endpoint accessed')
     try:
@@ -49,7 +53,7 @@ def get_system_metrics():
 
 # Update valid pairs list
 VALID_PAIRS = ['BTC-USD', 'ETH-USD'] 
-@app.route('/crypto-ticker/<currency_pair>')
+@app.route('/crypto-ticker/<currency_pair>', methods=["GET"])  # Explicitly allow GET
 def get_crypto_ticker(currency_pair):
     logger.info('Crypto metrics endpoint accessed')
     try:
