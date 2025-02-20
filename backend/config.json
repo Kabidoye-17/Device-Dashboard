@@ -1,20 +1,26 @@
 {
-    "logging_config": {
+    "database": {
+        "username": "Kabidoye17",
+        "password": "Metricsdbpassword",
+        "host": "Kabidoye17.mysql.pythonanywhere-services.com",
+        "name": "Kabidoye17$default"
+    },
+    "logging": {
         "console_output": {
             "enabled": true,
-            "level": "DEBUG",
-            "format": "%(log_color)s%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-            "date_format": "%Y-%m-%d %H:%M:%S"
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "date_format": "%Y-%m-%d %H:%M:%S",
+            "level": "INFO"
         },
         "file_output": {
             "enabled": true,
-            "level": "INFO",
-            "format": "%(asctime)s [%(levelname)s] %(name)s - %(pathname)s:%(lineno)d - %(message)s",
-            "date_format": "%Y-%m-%d %H:%M:%S",
             "log_dir": "logs",
             "filename": "app.log",
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "date_format": "%Y-%m-%d %H:%M:%S",
+            "level": "DEBUG",
             "max_bytes": 10485760,
-            "backup_count": 3
+            "backup_count": 5
         }
     }
-} 
+}
