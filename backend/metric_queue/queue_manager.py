@@ -67,39 +67,66 @@ class UploaderQueue:
         self.collection_interval = collection_interval
         self.last_upload_time = 0
 
+    def _serialize_measurements(self, measurements):
+        """Convert Measurement objects to dictionaries"""
+        serialized = []
+        for m in measurements:
+            if hasattr(m, '_asdict'):  # Handle namedtuple
+                data = m._asdict()
+            elif isinstance(m, dict):  # Already a dict
+                data = m
+            else:  # Custom Measurement class
+                data = {
+                    'name': str(m.name),
+                    'value': float(m.value),
+                    'type': str(m.type),
+                    'unit': str(m.unit),
+                    'timestamp': m.timestamp.timestamp() if hasattr(m.timestamp, 'timestamp') else m.timestamp,
+                    'device_id': str(m.device_id) if hasattr(m, 'device_id') else None
+                }
+            serialized.append(data)
+        return serialized
+
     def collect_and_upload(self) -> None:
         """Collect metrics and upload to server"""
         try:
-            # Collect system metrics from local machine
+            # Collect and upload system metrics
             system_metrics = self.system_collector.collect_metrics()
             if system_metrics:
                 serialized_metrics = self._serialize_measurements(system_metrics)
+                logger.debug(f"Serialized system metrics: {serialized_metrics}")
                 self._upload_metrics('system', serialized_metrics)
                 logger.info("System metrics collected and uploaded")
 
-            # Collect crypto data from API
+            # Changed collect_metrics to collect_all_pairs for crypto
             crypto_metrics = self.crypto_collector.collect_all_pairs()
             if crypto_metrics:
                 serialized_metrics = self._serialize_measurements(crypto_metrics)
+                logger.debug(f"Serialized crypto metrics: {serialized_metrics}")
                 self._upload_metrics('crypto', serialized_metrics)
                 logger.info("Crypto metrics collected and uploaded")
 
-            self.last_upload_time = time.time()
-
         except Exception as e:
             logger.error(f"Error in collection/upload cycle: {str(e)}")
+            logger.error(traceback.format_exc())
 
-    def _upload_metrics(self, metric_type: str, data: dict) -> bool:
-        """Upload metrics to PythonAnywhere server"""
+    def _upload_metrics(self, metric_type: str, data: list) -> bool:
+        """Upload metrics to server"""
         try:
-            # Fix URL to match app.py endpoints
-            url = f"{self.server_url}/api/metrics/{metric_type}"  # Changed from /metrics/ to /api/metrics/
-            response = requests.post(url, json=data, timeout=5)
+            url = f"{self.server_url}/api/metrics/{metric_type}"
+            logger.debug(f"Uploading to {url} with data: {data}")
+            response = requests.post(
+                url, 
+                json=data,
+                headers={'Content-Type': 'application/json'},
+                timeout=5
+            )
             response.raise_for_status()
-            logger.debug(f"Successfully uploaded {metric_type} metrics")
             return True
-        except Exception as e:
+        except requests.exceptions.RequestException as e:
             logger.error(f"Failed to upload {metric_type} metrics: {str(e)}")
+            if hasattr(e.response, 'text'):
+                logger.error(f"Server response: {e.response.text}")
             return False
 
     def run(self) -> None:

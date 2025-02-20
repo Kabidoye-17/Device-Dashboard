@@ -11,8 +11,9 @@ class Measurement:
     value: float    # The actual value
     type: str       # Category (system, crypto)
     unit: str       # Measurement unit (%, USD, MB)
-    timestamp: str  # When it was measured
+    timestamp: datetime  # When it was measured
     source: str     # Where it came from (device1, coinbase)
+    device_id: Optional[str] = None
 
     def to_dict(self):
         """Convert measurement to dictionary format."""
@@ -21,6 +22,7 @@ class Measurement:
             'value': self.value,
             'type': self.type,
             'unit': self.unit,
-            'timestamp': self.timestamp,
-            'source': self.source
+            'timestamp': self.timestamp.timestamp() if isinstance(self.timestamp, datetime) else self.timestamp,
+            'source': self.source,
+            'device_id': self.device_id
         }

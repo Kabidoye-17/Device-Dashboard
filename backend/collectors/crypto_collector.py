@@ -3,6 +3,7 @@ from decimal import Decimal
 from utils.timestamp import get_timestamp
 from models.measurement import Measurement
 from utils.logger import get_logger
+from typing import List
 
 logger = get_logger('CryptoCollector')
 
@@ -12,6 +13,7 @@ class CryptoCollector:
     def __init__(self):
         self.valid_pairs = {'BTC-USD', 'ETH-USD'}
         self.latest_data = {}
+        self.source = 'coinbase_api'
 
     def _fetch_crypto_data(self, currency_pair):
         """Fetches data from Coinbase API."""
@@ -24,31 +26,59 @@ class CryptoCollector:
             logger.error(f"Failed to fetch {currency_pair} data: {str(e)}")
             return None
 
-    def collect_crypto_data(self, currency_pair):
-        """Collects and stores price, bid, and ask for a currency pair."""
+    def collect_all_pairs(self) -> List[Measurement]:
+        """Collect price data for all valid pairs"""
+        all_measurements = []
+        timestamp = get_timestamp()
+        
+        for pair in self.valid_pairs:
+            try:
+                data = self._fetch_crypto_data(pair)
+                if not data:
+                    continue
+
+                # Create measurements with precise decimal handling
+                measurements = [
+                    Measurement(
+                        name=f'{pair.lower()}_price',
+                        value=float(Decimal(str(data['price']))),
+                        type='crypto',
+                        unit='USD',
+                        timestamp=timestamp,
+                        source=self.source
+                    ),
+                    Measurement(
+                        name=f'{pair.lower()}_bid',
+                        value=float(Decimal(str(data['bid']))),
+                        type='crypto',
+                        unit='USD',
+                        timestamp=timestamp,
+                        source=self.source
+                    ),
+                    Measurement(
+                        name=f'{pair.lower()}_ask',
+                        value=float(Decimal(str(data['ask']))),
+                        type='crypto',
+                        unit='USD',
+                        timestamp=timestamp,
+                        source=self.source
+                    )
+                ]
+                
+                all_measurements.extend(measurements)
+                # Store for later retrieval
+                self.latest_data[pair] = [m.to_dict() for m in measurements]
+                
+                logger.debug(f"Collected metrics for {pair}: Price={data['price']}, Bid={data['bid']}, Ask={data['ask']}")
+            except Exception as e:
+                logger.error(f"Error collecting {pair}: {str(e)}")
+                continue
+                
+        return all_measurements
+
+    def get_latest_data(self, currency_pair):
+        """Retrieves latest stored data for a currency pair"""
         if currency_pair not in self.valid_pairs:
             logger.warning(f"Invalid pair requested: {currency_pair}")
-            return []
-
-        data = self._fetch_crypto_data(currency_pair)
-        if not data:
-            return []
-
-        timestamp = get_timestamp()
-
-        measurements = [
-            Measurement(f'{currency_pair}_price', float(Decimal(str(data['price']))), 'crypto', 'USD', timestamp, 'coinbase'),
-            Measurement(f'{currency_pair}_bid', float(Decimal(str(data['bid']))), 'crypto', 'USD', timestamp, 'coinbase'),
-            Measurement(f'{currency_pair}_ask', float(Decimal(str(data['ask']))), 'crypto', 'USD', timestamp, 'coinbase')
-        ]
-
-        self.latest_data[currency_pair] = [m.to_dict() for m in measurements]
-        return self.latest_data[currency_pair]
-
-    def get_latest_crypto_data(self, currency_pair):
-        """Retrieves latest stored data or triggers a new collection."""
-        return self.latest_data.get(currency_pair) or self.collect_crypto_data(currency_pair)
-
-    def collect_all_pairs(self):
-        """Collects data for all valid pairs."""
-        return {pair: self.collect_crypto_data(pair) for pair in self.valid_pairs}
+            return None
+        return self.latest_data.get(currency_pair)

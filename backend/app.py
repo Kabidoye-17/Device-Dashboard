@@ -90,12 +90,26 @@ def receive_crypto_metrics():
             
         logger.debug(f"Received crypto metrics: {metrics}")
         
-        # Basic validation
+        # More lenient validation
         for metric in metrics:
-            if not all(k in metric for k in ('name', 'value', 'timestamp')):
-                return jsonify({"error": "Invalid metric format"}), 400
+            required_fields = {'name', 'value'}
+            missing_fields = required_fields - set(metric.keys())
+            if missing_fields:
+                logger.error(f"Missing required fields: {missing_fields}")
+                return jsonify({"error": f"Missing required fields: {missing_fields}"}), 400
+
+            # Ensure value is numeric
+            try:
+                metric['value'] = float(metric['value'])
+            except (TypeError, ValueError):
+                logger.error(f"Invalid value format for metric: {metric}")
+                return jsonify({"error": f"Invalid value format for metric: {metric}"}), 400
+
+            # Add required fields if missing
+            metric['timestamp'] = metric.get('timestamp', datetime.utcnow().timestamp())
             metric['type'] = 'crypto'
             metric['source'] = 'crypto_collector'
+            metric['unit'] = metric.get('unit', 'unknown')
             
         db_service.store_metrics(metrics)
         logger.info("Successfully stored crypto metrics")
