@@ -79,9 +79,11 @@ class UploaderQueue:
     def _upload_metrics(self, metric_type: str, data: dict) -> bool:
         """Upload metrics to PythonAnywhere server"""
         try:
-            url = f"{self.server_url}/metrics/{metric_type}"
+            # Fix URL to match app.py endpoints
+            url = f"{self.server_url}/api/metrics/{metric_type}"  # Changed from /metrics/ to /api/metrics/
             response = requests.post(url, json=data, timeout=5)
             response.raise_for_status()
+            logger.debug(f"Successfully uploaded {metric_type} metrics")
             return True
         except Exception as e:
             logger.error(f"Failed to upload {metric_type} metrics: {str(e)}")
