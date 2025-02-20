@@ -41,28 +41,42 @@ class DatabaseService:
             for metric in metrics_data:
                 logger.debug(f"Processing metric: {metric}")
                 
+                # Ensure metric data is properly formatted
+                try:
+                    metric_value = float(metric['value'])
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid metric value: {metric.get('value')}. Skipping.")
+                    continue
+
+                # Ensure timestamp is properly formatted
+                try:
+                    timestamp = datetime.fromtimestamp(float(metric.get('timestamp', datetime.utcnow().timestamp())))
+                except (ValueError, TypeError):
+                    timestamp = datetime.utcnow()
+                    logger.warning(f"Invalid timestamp, using current time")
+
                 m_type = self.get_or_create(
                     MeasurementType,
-                    name=metric.get('type', 'system')
+                    name=str(metric.get('type', 'system'))
                 )
 
                 unit = self.get_or_create(
                     Unit,
-                    unit_name=metric.get('unit', 'unknown')
+                    unit_name=str(metric.get('unit', 'unknown'))
                 )
 
                 source = self.get_or_create(
                     Source,
-                    name=metric.get('source', 'unknown')
+                    name=str(metric.get('source', 'unknown'))
                 )
 
                 measurement = Measurement(
-                    name=metric['name'],
-                    value=float(metric['value']),
+                    name=str(metric['name']),
+                    value=metric_value,
                     type_id=m_type.id,
                     unit_id=unit.id,
                     source_id=source.id,
-                    timestamp=datetime.fromtimestamp(metric.get('timestamp', datetime.utcnow().timestamp()))
+                    timestamp=timestamp
                 )
                 self.session.add(measurement)
             
@@ -79,8 +93,18 @@ class DatabaseService:
         try:
             logger.debug("Fetching latest metrics")
             metrics = self.session.query(Measurement).order_by(Measurement.timestamp.desc()).all()
-            logger.info(f"Retrieved {len(metrics)} metrics")
-            return metrics
+            # Convert to serializable format
+            metrics_list = [{
+                'id': metric.id,
+                'name': metric.name,
+                'value': float(metric.value),
+                'type': metric.type.name,
+                'unit': metric.unit.unit_name,
+                'source': metric.source.name,
+                'timestamp': metric.timestamp.isoformat()
+            } for metric in metrics]
+            logger.info(f"Retrieved {len(metrics_list)} metrics")
+            return metrics_list
         except SQLAlchemyError as e:
             logger.error(f"Error fetching metrics: {str(e)}")
             raise

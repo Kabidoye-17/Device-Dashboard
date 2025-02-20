@@ -35,16 +35,7 @@ except Exception as e:
 def get_all_metrics():
     logger.info('All metrics endpoint accessed')
     try:
-        latest_metrics = db_service.get_latest_metrics()
-        metrics_data = [{
-            'id': metric.id,
-            'name': metric.name,
-            'value': metric.value,
-            'type': metric.type.name,
-            'unit': metric.unit.unit_name,
-            'source': metric.source.name,
-            'timestamp': metric.timestamp.isoformat()
-        } for metric in latest_metrics]
+        metrics_data = db_service.get_latest_metrics()
         return jsonify(metrics_data)
     except Exception as e:
         logger.error(f'Error in all metrics: {str(e)}')
