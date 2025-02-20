@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 import logging
@@ -30,8 +30,8 @@ class FileLoggingConfig:
 
 @dataclass
 class LoggingConfig:
-    console_output: ConsoleLoggingConfig = ConsoleLoggingConfig()
-    file_output: FileLoggingConfig = FileLoggingConfig()
+    console_output: ConsoleLoggingConfig = field(default_factory=ConsoleLoggingConfig)
+    file_output: FileLoggingConfig = field(default_factory=FileLoggingConfig)
 
 @dataclass
 class DatabaseConfig:
@@ -47,8 +47,8 @@ class DatabaseConfig:
 class Config:
     SECRET_KEY: str = 'dev-secret-key'
     SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
-    database: DatabaseConfig = DatabaseConfig()
-    logging: LoggingConfig = LoggingConfig()
+    database: DatabaseConfig = field(default_factory=DatabaseConfig)
+    logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
