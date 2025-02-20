@@ -17,63 +17,25 @@ logger = get_logger()
 metrics_store = MetricsStore()  # This doesn't need server_url parameter
 logger.info("Initialized metrics store")
 
-@app.route('/system-metrics', methods=["GET"])  # Explicitly allow GET
-def get_system_metrics():
-    logger.info('System metrics endpoint accessed')
+@app.route('/metrics', methods=['GET'])
+def get_all_metrics():
+    logger.info('All metrics endpoint accessed')
     try:
         latest_data = metrics_store.get_latest_metrics()
         logger.debug(f"Raw metrics data: {latest_data}")
-        
-        metrics = latest_data['system_metrics']
-        if not metrics:
-            logger.warning("No system metrics found in store")
-            return jsonify({
-                'cpu_load': 0,
-                'ram_usage': 0,
-                'network_sent': 0,
-                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                'status': 'no_data'
-            })
-        
-        # Transform list of measurements into expected format
-        formatted_metrics = {
-            'cpu_load': next((m['value'] for m in metrics if m['name'] == 'cpu_load'), 0),
-            'ram_usage': next((m['value'] for m in metrics if m['name'] == 'ram_usage'), 0),
-            'network_sent': next((m['value'] for m in metrics if m['name'] == 'network_sent'), 0),
-            'timestamp': next((m['timestamp'] for m in metrics), datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        }
-        return jsonify(formatted_metrics)
+
+        system_data = latest_data['system_metrics']
+        crypto_data = latest_data['crypto_metrics']
+
+        all_metrics = system_data + [item for sublist in crypto_data.values() for item in sublist]
+        return jsonify(all_metrics)
     except Exception as e:
-        logger.error(f'Error in system metrics: {str(e)}')
+        logger.error(f'Error in all metrics: {str(e)}')
         logger.error(f'Traceback: {traceback.format_exc()}')
         return jsonify({
             'error': str(e),
             'traceback': traceback.format_exc()
         }), 500
-
-# Update valid pairs list
-VALID_PAIRS = ['BTC-USD', 'ETH-USD'] 
-@app.route('/crypto-ticker/<currency_pair>', methods=["GET"])  # Explicitly allow GET
-def get_crypto_ticker(currency_pair):
-    logger.info('Crypto metrics endpoint accessed')
-    try:
-        latest_data = metrics_store.get_latest_metrics()
-        crypto_data = latest_data['crypto_metrics'].get(currency_pair, [])
-        
-        if crypto_data:
-            # Transform list of measurements into expected format
-            formatted_crypto = {
-                'price': next((m['value'] for m in crypto_data if m['name'] == f'{currency_pair}_price'), 0),
-                'bid': next((m['value'] for m in crypto_data if m['name'] == f'{currency_pair}_bid'), 0),
-                'ask': next((m['value'] for m in crypto_data if m['name'] == f'{currency_pair}_ask'), 0),
-                'timestamp': next((m['timestamp'] for m in crypto_data), datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
-                'currency_pair': currency_pair
-            }
-            return jsonify(formatted_crypto)
-        return jsonify({'error': 'No data available for this currency pair'}), 404
-    except Exception as e:
-        logger.error(f'Error fetching crypto data: {str(e)}')
-        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/metrics/system', methods=['POST'])
 def receive_system_metrics():

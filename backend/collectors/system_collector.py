@@ -25,7 +25,7 @@ class SystemCollector:
             ]
 
             self.latest_metrics = measurements
-            return [m.to_dict() for m in measurements]
+            return measurements
             
         except Exception as e:
             logger.error(f"Error collecting system metrics: {str(e)}")
@@ -33,4 +33,4 @@ class SystemCollector:
 
     def get_latest_metrics(self):
         """Gets the latest collected system metrics."""
-        return [m.to_dict() for m in self.latest_metrics] if self.latest_metrics else self.collect_metrics()
+        return self.latest_metrics if self.latest_metrics else self.collect_metrics()
