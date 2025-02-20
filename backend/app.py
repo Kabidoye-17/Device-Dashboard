@@ -4,6 +4,8 @@ from flask_cors import CORS
 from utils.logger import get_logger
 from metric_queue.queue_manager import MetricsStore  # Changed from UploaderQueue to MetricsStore
 import traceback
+from services.db_service import DatabaseService
+from config import Config, load_config
 
 app = Flask(__name__)
 # Update CORS to explicitly allow all methods
@@ -17,18 +19,30 @@ logger = get_logger()
 metrics_store = MetricsStore()  # This doesn't need server_url parameter
 logger.info("Initialized metrics store")
 
+try:
+    # Load config and initialize database service
+    config = load_config()
+    db_service = DatabaseService(config['database'].get_database_url())
+    logger.info("Application initialized successfully")
+except Exception as e:
+    logger.critical(f"Failed to initialize application: {str(e)}")
+    raise
+
 @app.route('/metrics', methods=['GET'])
 def get_all_metrics():
     logger.info('All metrics endpoint accessed')
     try:
-        latest_data = metrics_store.get_latest_metrics()
-        logger.debug(f"Raw metrics data: {latest_data}")
-
-        system_data = latest_data['system_metrics']
-        crypto_data = latest_data['crypto_metrics']
-
-        all_metrics = system_data + [item for sublist in crypto_data.values() for item in sublist]
-        return jsonify(all_metrics)
+        latest_metrics = db_service.get_latest_metrics()
+        metrics_data = [{
+            'id': metric.id,
+            'name': metric.name,
+            'value': metric.value,
+            'type': metric.type.name,
+            'unit': metric.unit.unit_name,
+            'source': metric.source.name,
+            'timestamp': metric.timestamp.isoformat()
+        } for metric in latest_metrics]
+        return jsonify(metrics_data)
     except Exception as e:
         logger.error(f'Error in all metrics: {str(e)}')
         logger.error(f'Traceback: {traceback.format_exc()}')
@@ -45,9 +59,14 @@ def receive_system_metrics():
         logger.debug(f"Received system metrics payload: {metrics}")
         if not metrics:
             raise ValueError("Empty metrics payload")
+        
+        # Transform metrics to include type and source
+        for metric in metrics:
+            metric['type'] = 'system'
+            metric['source'] = 'system_collector'
             
-        metrics_store.update_system_metrics(metrics)
-        logger.info("Successfully updated system metrics")
+        db_service.store_metrics(metrics)
+        logger.info("Successfully stored system metrics")
         return jsonify({"status": "success"}), 200
         
     except Exception as e:
@@ -63,12 +82,34 @@ def receive_crypto_metrics():
     """Endpoint to receive crypto metrics from local collector"""
     try:
         metrics = request.get_json()
-        metrics_store.update_crypto_metrics(metrics)
-        logger.info("Received crypto metrics update")
+        # Transform metrics to include type and source
+        for metric in metrics:
+            metric['type'] = 'crypto'
+            metric['source'] = 'crypto_collector'
+            
+        db_service.store_metrics(metrics)
+        logger.info("Successfully stored crypto metrics")
         return jsonify({"status": "success"}), 200
     except Exception as e:
         logger.error(f"Error receiving crypto metrics: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.errorhandler(500)
+def handle_500_error(e):
+    logger.error(f"Internal server error: {str(e)}")
+    return jsonify({
+        "error": "Internal server error",
+        "message": str(e)
+    }), 500
+
+@app.errorhandler(404)
+def handle_404_error(e):
+    logger.warning(f"Route not found: {request.url}")
+    return jsonify({
+        "error": "Not found",
+        "message": f"Route {request.url} not found"
+    }), 404
+
 if __name__ == '__main__':
+    logger.info("Starting Flask application...")
     app.run(debug=True, host='0.0.0.0', port=5000)
