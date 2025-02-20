@@ -1,7 +1,7 @@
 from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from utils.logger import get_logger
+from utils.logger import get_logger, setup_logger
 from metric_queue.queue_manager import MetricsStore  # Changed from UploaderQueue to MetricsStore
 import traceback
 from services.db_service import DatabaseService
@@ -13,16 +13,19 @@ CORS(app, resources={
     r"/api/*": {"origins": "*", "methods": ["GET", "POST"]},
     r"/*": {"origins": "*", "methods": ["GET"]}
 })
-logger = get_logger()
+
+# Load config first
+config = load_config()
+# Setup logger with config
+logger = setup_logger(config)
 
 # Single metrics store instance
 metrics_store = MetricsStore()  # This doesn't need server_url parameter
 logger.info("Initialized metrics store")
 
 try:
-    # Load config and initialize database service
-    config = load_config()
-    db_service = DatabaseService(config['database'].get_database_url())
+    # Initialize database service with config
+    db_service = DatabaseService(config.SQLALCHEMY_DATABASE_URI)
     logger.info("Application initialized successfully")
 except Exception as e:
     logger.critical(f"Failed to initialize application: {str(e)}")

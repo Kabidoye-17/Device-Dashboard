@@ -43,24 +43,30 @@ class DatabaseConfig:
     def get_database_url(self) -> str:
         return f"mysql+mysqlconnector://{self.username}:{self.password}@{self.host}/{self.name}"
 
+@dataclass
+class Config:
+    SECRET_KEY: str = 'dev-secret-key'
+    SQLALCHEMY_TRACK_MODIFICATIONS: bool = False
+    database: DatabaseConfig = DatabaseConfig()
+    logging: LoggingConfig = LoggingConfig()
+
+    @property
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
+        return self.database.get_database_url()
+
 def load_config():
     config_path = Path(__file__).parent / 'config.json'
     try:
         if not config_path.exists():
-            raise FileNotFoundError(f"Config file not found at {config_path}")
+            return Config()  # Return default config if file doesn't exist
             
         with open(config_path, 'r') as f:
             config_data = json.load(f)
             
-        # Validate required sections
-        if 'database' not in config_data or 'logging' not in config_data:
-            raise ValueError("Config file missing required sections: 'database' and 'logging'")
-            
-        return {
-            'logging': LoggingConfig(**config_data['logging']),
-            'database': DatabaseConfig(**config_data['database'])
-        }
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in config file: {str(e)}")
+        return Config(
+            database=DatabaseConfig(**config_data.get('database', {})),
+            logging=LoggingConfig(**config_data.get('logging', {}))
+        )
     except Exception as e:
-        raise RuntimeError(f"Failed to load configuration: {str(e)}")
+        logging.warning(f"Failed to load configuration: {str(e)}. Using defaults.")
+        return Config()

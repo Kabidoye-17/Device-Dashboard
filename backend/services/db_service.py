@@ -11,7 +11,7 @@ class DatabaseService:
     def __init__(self, connection_string):
         try:
             logger.info("Initializing database connection...")
-            self.engine = create_engine(connection_string)
+            self.engine = create_engine(connection_string, pool_recycle=280)  # Add pool_recycle for MySQL
             Base.metadata.create_all(self.engine)
             Session = sessionmaker(bind=self.engine)
             self.session = Session()
