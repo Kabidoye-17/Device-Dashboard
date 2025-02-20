@@ -7,28 +7,28 @@ import traceback
 from services.db_service import DatabaseService
 from config import Config, load_config
 
+# Initialize application with config
 app = Flask(__name__)
-# Update CORS to explicitly allow all methods
 CORS(app, resources={
     r"/api/*": {"origins": "*", "methods": ["GET", "POST"]},
     r"/*": {"origins": "*", "methods": ["GET"]}
 })
 
-# Load config first
+# Load and apply configuration
 config = load_config()
-# Setup logger with config
+app.config.from_object(config)
+
+# Setup logging after config is loaded
 logger = setup_logger(config)
+logger.info("Logger initialized with configuration")
 
-# Single metrics store instance
-metrics_store = MetricsStore()  # This doesn't need server_url parameter
-logger.info("Initialized metrics store")
-
+# Initialize services
 try:
-    # Initialize database service with config
+    metrics_store = MetricsStore()
     db_service = DatabaseService(config.SQLALCHEMY_DATABASE_URI)
-    logger.info("Application initialized successfully")
+    logger.info("Application services initialized successfully")
 except Exception as e:
-    logger.critical(f"Failed to initialize application: {str(e)}")
+    logger.critical(f"Failed to initialize application services: {str(e)}")
     raise
 
 @app.route('/metrics', methods=['GET'])

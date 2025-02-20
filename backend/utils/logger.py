@@ -1,36 +1,54 @@
 import logging
+import logging.handlers
 import sys
 from pathlib import Path
+from typing import Union
+from config import Config
 
 _logger = None
 
-def setup_logger(config, name: str = 'FlaskApp') -> logging.Logger:
+def setup_logger(config: Union[Config, dict], name: str = 'FlaskApp') -> logging.Logger:
     """Configures logger with settings from config"""
     logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)  # Set base level
     
-    if config.logging.console_output.enabled:
-        console = logging.StreamHandler(sys.stdout)
-        console.setFormatter(logging.Formatter(
-            config.logging.console_output.format,
-            config.logging.console_output.date_format
-        ))
-        console.setLevel(config.logging.console_output.get_level())
-        logger.addHandler(console)
+    # Clear existing handlers
+    logger.handlers = []
     
-    if config.logging.file_output.enabled:
-        log_dir = Path(config.logging.file_output.log_dir)
+    # Handle both dict and Config object cases
+    if isinstance(config, dict):
+        console_config = config.get('logging', {}).get('console_output', {})
+        file_config = config.get('logging', {}).get('file_output', {})
+    else:
+        console_config = config.logging.console_output
+        file_config = config.logging.file_output
+    
+    # Console handler
+    console = logging.StreamHandler(sys.stdout)
+    console.setFormatter(logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        '%Y-%m-%d %H:%M:%S'
+    ))
+    console.setLevel(logging.INFO)
+    logger.addHandler(console)
+    
+    # File handler
+    try:
+        log_dir = Path('logs')
         log_dir.mkdir(exist_ok=True)
         file_handler = logging.handlers.RotatingFileHandler(
-            log_dir / config.logging.file_output.filename,
-            maxBytes=config.logging.file_output.max_bytes,
-            backupCount=config.logging.file_output.backup_count
+            log_dir / 'app.log',
+            maxBytes=10_485_760,  # 10MB
+            backupCount=5
         )
         file_handler.setFormatter(logging.Formatter(
-            config.logging.file_output.format,
-            config.logging.file_output.date_format
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            '%Y-%m-%d %H:%M:%S'
         ))
-        file_handler.setLevel(config.logging.file_output.get_level())
+        file_handler.setLevel(logging.DEBUG)
         logger.addHandler(file_handler)
+    except Exception as e:
+        logger.warning(f"Could not setup file logging: {e}")
     
     return logger
 
