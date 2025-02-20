@@ -4,6 +4,7 @@ from typing import Dict, Any
 from utils.logger import get_logger
 from collectors.system_collector import SystemCollector
 from collectors.crypto_collector import CryptoCollector
+import traceback
 
 logger = get_logger('QueueManager')
 
@@ -17,9 +18,24 @@ class MetricsStore:
         self.last_update_time = 0
 
     def update_system_metrics(self, metrics: list) -> None:
-        self.latest_metrics['system_metrics'] = metrics
-        self.last_update_time = time.time()
-        logger.debug("Updated system metrics")
+        """Update system metrics with validation"""
+        try:
+            if not isinstance(metrics, list):
+                raise ValueError(f"Expected list of metrics, got {type(metrics)}")
+            
+            # Validate metric format
+            for metric in metrics:
+                if not all(k in metric for k in ['name', 'value', 'timestamp']):
+                    raise ValueError(f"Invalid metric format: {metric}")
+            
+            self.latest_metrics['system_metrics'] = metrics
+            self.last_update_time = time.time()
+            logger.debug(f"Updated system metrics: {metrics}")
+            
+        except Exception as e:
+            logger.error(f"Error updating system metrics: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise
 
     def update_crypto_metrics(self, metrics: dict) -> None:
         self.latest_metrics['crypto_metrics'] = metrics
@@ -63,7 +79,7 @@ class UploaderQueue:
     def _upload_metrics(self, metric_type: str, data: dict) -> bool:
         """Upload metrics to PythonAnywhere server"""
         try:
-            url = f"{self.server_url}/api/metrics/{metric_type}"
+            url = f"{self.server_url}/metrics/{metric_type}"
             response = requests.post(url, json=data, timeout=5)
             response.raise_for_status()
             return True
