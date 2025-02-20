@@ -47,6 +47,17 @@ class MetricsStore:
             logger.warning("Metrics are stale (>30s old")
         return self.latest_metrics
 
+    def _serialize_measurements(self, measurements):
+        """Convert Measurement objects to dictionaries"""
+        return [{
+            'name': m.name,
+            'value': m.value,
+            'type': m.type,
+            'unit': m.unit,
+            'timestamp': m.timestamp,
+            'device_id': m.device_id
+        } for m in measurements]
+
 class UploaderQueue:
     """Client-side collector and uploader"""
     def __init__(self, server_url: str, collection_interval: int = 10):
@@ -62,13 +73,15 @@ class UploaderQueue:
             # Collect system metrics from local machine
             system_metrics = self.system_collector.collect_metrics()
             if system_metrics:
-                self._upload_metrics('system', system_metrics)
+                serialized_metrics = self._serialize_measurements(system_metrics)
+                self._upload_metrics('system', serialized_metrics)
                 logger.info("System metrics collected and uploaded")
 
             # Collect crypto data from API
             crypto_metrics = self.crypto_collector.collect_all_pairs()
             if crypto_metrics:
-                self._upload_metrics('crypto', crypto_metrics)
+                serialized_metrics = self._serialize_measurements(crypto_metrics)
+                self._upload_metrics('crypto', serialized_metrics)
                 logger.info("Crypto metrics collected and uploaded")
 
             self.last_upload_time = time.time()

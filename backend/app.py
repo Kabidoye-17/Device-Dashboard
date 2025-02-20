@@ -35,8 +35,17 @@ except Exception as e:
 def get_all_metrics():
     logger.info('All metrics endpoint accessed')
     try:
+        # Add connection verification
+        if not db_service.verify_connection():
+            logger.error("Database connection failed")
+            return jsonify({
+                'error': 'Database connection failed',
+                'note': 'This might be due to PythonAnywhere free tier restrictions'
+            }), 500
+            
         metrics_data = db_service.get_latest_metrics()
-        return jsonify(metrics_data)
+        logger.info(f"Retrieved {len(metrics_data) if metrics_data else 0} metrics")
+        return jsonify(metrics_data or [])
     except Exception as e:
         logger.error(f'Error in all metrics: {str(e)}')
         logger.error(f'Traceback: {traceback.format_exc()}')
@@ -76,8 +85,15 @@ def receive_crypto_metrics():
     """Endpoint to receive crypto metrics from local collector"""
     try:
         metrics = request.get_json()
-        # Transform metrics to include type and source
+        if not metrics:
+            return jsonify({"error": "Empty metrics payload"}), 400
+            
+        logger.debug(f"Received crypto metrics: {metrics}")
+        
+        # Basic validation
         for metric in metrics:
+            if not all(k in metric for k in ('name', 'value', 'timestamp')):
+                return jsonify({"error": "Invalid metric format"}), 400
             metric['type'] = 'crypto'
             metric['source'] = 'crypto_collector'
             
@@ -86,6 +102,7 @@ def receive_crypto_metrics():
         return jsonify({"status": "success"}), 200
     except Exception as e:
         logger.error(f"Error receiving crypto metrics: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 @app.errorhandler(500)

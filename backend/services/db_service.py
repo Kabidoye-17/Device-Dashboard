@@ -4,6 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from models.db_models import Base, MeasurementType, Unit, Source, Measurement
 from datetime import datetime
 from utils.logger import get_logger
+import sqlalchemy as sa
 
 logger = get_logger(__name__)
 
@@ -19,6 +20,16 @@ class DatabaseService:
         except SQLAlchemyError as e:
             logger.error(f"Failed to initialize database: {str(e)}")
             raise
+
+    def verify_connection(self):
+        """Verify database connection is working"""
+        try:
+            with self.engine.connect() as conn:
+                conn.execute(sa.text('SELECT 1'))
+            return True
+        except SQLAlchemyError as e:
+            logger.error(f"Database connection failed: {str(e)}")
+            return False
 
     def get_or_create(self, model, **kwargs):
         try:
