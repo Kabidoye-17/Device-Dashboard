@@ -17,12 +17,24 @@ class Measurement:
 
     def to_dict(self):
         """Convert measurement to dictionary format."""
+        return self.serialize()
+
+    def serialize(self) -> dict:
+        """Serialize measurement for JSON transmission"""
+        # Convert timestamp to ISO format string if it's a datetime object
+        if isinstance(self.timestamp, datetime):
+            timestamp = self.timestamp.isoformat()
+        elif hasattr(self.timestamp, 'timestamp'):  # Handle other timestamp objects
+            timestamp = self.timestamp.timestamp()
+        else:  # Already a string or number
+            timestamp = self.timestamp
+
         return {
-            'name': self.name,
-            'value': self.value,
-            'type': self.type,
-            'unit': self.unit,
-            'timestamp': self.timestamp.timestamp() if isinstance(self.timestamp, datetime) else self.timestamp,
-            'source': self.source,
-            'device_id': self.device_id
+            'name': str(self.name),
+            'value': float(self.value),
+            'type': str(self.type),
+            'unit': str(self.unit),
+            'timestamp': timestamp,
+            'source': str(self.source),
+            'device_id': str(self.device_id) if self.device_id else None
         }

@@ -1,14 +1,14 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-from models.db_models import Base, MeasurementType, Unit, Source, Measurement
+from models.db_models import Base, MetricType, Unit, Source, MetricMeasurement
 from datetime import datetime
 from utils.logger import get_logger
 import sqlalchemy as sa
 
 logger = get_logger(__name__)
 
-class DatabaseService:
+class DatabaseAggregator:
     def __init__(self, connection_string):
         try:
             logger.info("Initializing database connection...")
@@ -63,11 +63,11 @@ class DatabaseService:
                 try:
                     timestamp = datetime.fromtimestamp(float(metric.get('timestamp', datetime.utcnow().timestamp())))
                 except (ValueError, TypeError):
-                    timestamp = datetime.utcnow()
+                    timestamp = datetime.timezone.utc()
                     logger.warning(f"Invalid timestamp, using current time")
 
                 m_type = self.get_or_create(
-                    MeasurementType,
+                    MetricType,
                     name=str(metric.get('type', 'system'))
                 )
 
@@ -81,13 +81,14 @@ class DatabaseService:
                     name=str(metric.get('source', 'unknown'))
                 )
 
-                measurement = Measurement(
+                measurement = MetricMeasurement(
                     name=str(metric['name']),
                     value=metric_value,
                     type_id=m_type.id,
                     unit_id=unit.id,
                     source_id=source.id,
-                    timestamp=timestamp
+                    timestamp=timestamp,
+                    device_id=str(metric.get('device_id', None))
                 )
                 self.session.add(measurement)
             
@@ -103,17 +104,8 @@ class DatabaseService:
     def get_latest_metrics(self):
         try:
             logger.debug("Fetching latest metrics")
-            metrics = self.session.query(Measurement).order_by(Measurement.timestamp.desc()).all()
-            # Convert to serializable format
-            metrics_list = [{
-                'id': metric.id,
-                'name': metric.name,
-                'value': float(metric.value),
-                'type': metric.type.name,
-                'unit': metric.unit.unit_name,
-                'source': metric.source.name,
-                'timestamp': metric.timestamp.isoformat()
-            } for metric in metrics]
+            metrics = self.session.query(MetricMeasurement).order_by(MetricMeasurement.timestamp.desc()).all()
+            metrics_list = [metric.to_dict() for metric in metrics]
             logger.info(f"Retrieved {len(metrics_list)} metrics")
             return metrics_list
         except SQLAlchemyError as e:

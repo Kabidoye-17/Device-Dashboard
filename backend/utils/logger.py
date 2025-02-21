@@ -3,7 +3,7 @@ import logging.handlers
 import sys
 from pathlib import Path
 from typing import Union
-from config import Config
+from config.config import Config
 
 _logger = None
 
