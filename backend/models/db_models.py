@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 
 Base = declarative_base()
 
@@ -34,7 +35,7 @@ class MetricMeasurement(Base):
     value = Column(Float, nullable=False)
     type_id = Column(Integer, ForeignKey('metric_types.id'), nullable=False)
     unit_id = Column(Integer, ForeignKey('units.id'), nullable=False)
-    timestamp = Column(DateTime, nullable=False, default=datetime.timezone.utc)
+    timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     source_id = Column(Integer, ForeignKey('sources.id'), nullable=False)
     device_id = Column(String(100), nullable=True)
     
@@ -50,7 +51,7 @@ class MetricMeasurement(Base):
             'value': self.value,
             'type': self.type.name,
             'unit': self.unit.unit_name,
-            'timestamp': self.timestamp.isoformat(),
+            'timestamp': self.timestamp.astimezone(timezone.utc).isoformat(),
             'source': self.source.name,
             'device_id': self.device_id
         }
