@@ -18,6 +18,9 @@ app.config.from_object(config)
 logger = setup_logger(config)
 logger.info("Logger initialized with configuration")
 
+# Add debug logging right after app initialization
+logger.info("Initializing Flask routes...")
+
 # Initialize aggregator
 try:
     db_aggregator = DatabaseAggregator(config.SQLALCHEMY_DATABASE_URI)
@@ -26,29 +29,38 @@ except Exception as e:
     logger.critical(f"Failed to initialize database aggregator: {str(e)}")
     raise
 
-# Keep only these two essential routes
-@app.route('/api/metrics/metrics', methods=['POST'])
-def receive_metrics():
-    try:
-        metrics_data = request.json
-        if not metrics_data:
-            return jsonify({'error': 'No metrics data received'}), 400
+# Update route from /api/metrics/metrics to /api/metrics
+@app.route('/api/metrics', methods=['POST', 'GET'])
+def handle_metrics():
+    logger.debug(f"Handling {request.method} request to /api/metrics")
+    if request.method == 'POST':
+        try:
+            metrics_data = request.json
+            if not metrics_data:
+                return jsonify({'error': 'No metrics data received'}), 400
 
-        db_aggregator.store_metrics(metrics_data)
-        return jsonify({'status': 'success', 'count': len(metrics_data)}), 200
+            db_aggregator.store_metrics(metrics_data)
+            return jsonify({'status': 'success', 'count': len(metrics_data)}), 200
 
-    except Exception as e:
-        logger.error(f"Error processing metrics: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        except Exception as e:
+            logger.error(f"Error processing metrics: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+    else:  # GET request
+        try:
+            metrics = db_aggregator.get_latest_metrics()
+            return jsonify(metrics), 200
+        except Exception as e:
+            logger.error(f"Error fetching metrics: {str(e)}")
+            return jsonify({'error': str(e)}), 500
 
-@app.route('/api/metrics', methods=['GET'])
-def get_metrics():
-    try:
-        metrics = db_aggregator.get_latest_metrics()
-        return jsonify(metrics), 200
-    except Exception as e:
-        logger.error(f"Error fetching metrics: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+# Add a test route to verify the application is running
+@app.route('/', methods=['GET'])
+def health_check():
+    return jsonify({
+        "status": "ok",
+        "message": "API is running",
+        "routes": [str(rule) for rule in app.url_map.iter_rules()]
+    })
 
 @app.errorhandler(500)
 def handle_500_error(e):
@@ -65,6 +77,15 @@ def handle_404_error(e):
         "error": "Not found",
         "message": f"Route {request.url} not found"
     }), 404
+
+# Log all registered routes after they're defined
+logger.info("Registered routes:")
+def log_routes():
+    for rule in app.url_map.iter_rules():
+        logger.info(f"Route: {rule.rule} Methods: {rule.methods}")
+
+# Call route logging after all routes are registered
+log_routes()
 
 if __name__ == '__main__':
     logger.info("Starting Flask application...")

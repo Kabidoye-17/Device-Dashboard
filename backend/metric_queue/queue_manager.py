@@ -44,7 +44,12 @@ class UploaderQueue:
                     logger.warning(f"No transform rules found for collector: {collector_type}")
                     continue
 
-                timestamp = datetime.fromtimestamp(metric['timestamp'])
+                # Convert string timestamp to datetime
+                timestamp_str = metric['timestamp']
+                if isinstance(timestamp_str, str):
+                    timestamp = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                else:
+                    timestamp = datetime.fromtimestamp(timestamp_str)
 
                 # Format each metric field according to its rules
                 for field, rule in rules.__dict__.items():
@@ -93,7 +98,8 @@ class UploaderQueue:
     def _upload_metrics(self, metric_type: str, data: list) -> bool:
         """Upload metrics to server"""
         try:
-            url = f"{self.server_url}/api/metrics/{metric_type}"
+    
+            url = f"{self.server_url}/api/metrics"
             logger.debug(f"Uploading to {url} with data: {data}")
             response = requests.post(
                 url, 
@@ -104,7 +110,7 @@ class UploaderQueue:
             response.raise_for_status()
             return True
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to upload {metric_type} metrics: {str(e)}")
+            logger.error(f"Failed to upload metrics: {str(e)}")
             if hasattr(e.response, 'text'):
                 logger.error(f"Server response: {e.response.text}")
             return False
