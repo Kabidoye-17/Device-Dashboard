@@ -2,7 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from models.db_models import Base, MetricType, Unit, Source, MetricMeasurement
-from datetime import datetime
+from datetime import datetime, timezone
 from utils.logger import get_logger
 import sqlalchemy as sa
 
@@ -63,7 +63,7 @@ class DatabaseAggregator:
                 try:
                     timestamp = datetime.fromtimestamp(float(metric.get('timestamp', datetime.utcnow().timestamp())))
                 except (ValueError, TypeError):
-                    timestamp = datetime.timezone.utc()
+                    timestamp = datetime.now(timezone.utc)
                     logger.warning(f"Invalid timestamp, using current time")
 
                 m_type = self.get_or_create(
