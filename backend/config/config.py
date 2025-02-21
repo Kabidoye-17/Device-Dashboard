@@ -1,0 +1,120 @@
+import json
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+import logging
+
+@dataclass
+class ConsoleLoggingConfig:
+    enabled: bool
+    format: str
+    date_format: str
+    level: str
+
+    def get_level(self) -> int:
+        return getattr(logging, self.level.upper())
+
+@dataclass
+class FileLoggingConfig:
+    enabled: bool
+    log_dir: str
+    filename: str
+    format: str
+    date_format: str
+    level: str
+    max_bytes: int
+    backup_count: int
+
+    def get_level(self) -> int:
+        return getattr(logging, self.level.upper())
+
+@dataclass
+class LoggingConfig:
+    console_output: ConsoleLoggingConfig
+    file_output: FileLoggingConfig
+
+@dataclass
+class DatabaseConfig:
+    username: str
+    password: str
+    host: str
+    name: str
+
+    def get_database_url(self) -> str:
+        return f"mysql+mysqlconnector://{self.username}:{self.password}@{self.host}/{self.name}"
+
+@dataclass
+class MetricConfig:
+    name: str
+    unit: str
+    source: str
+
+@dataclass
+class SystemMetricsConfig:
+    cpu_load: MetricConfig
+    ram_usage: MetricConfig
+    network_sent: MetricConfig
+
+@dataclass
+class CryptoMetricsConfig:
+    price: MetricConfig
+    bid: MetricConfig
+    ask: MetricConfig
+
+@dataclass
+class TransformRulesConfig:
+    system: SystemMetricsConfig
+    crypto: CryptoMetricsConfig
+
+    def __post_init__(self):
+        if isinstance(self.system, dict):
+            self.system = SystemMetricsConfig(**{
+                k: MetricConfig(**v) for k, v in self.system.items()
+            })
+        if isinstance(self.crypto, dict):
+            self.crypto = CryptoMetricsConfig(**{
+                k: MetricConfig(**v) for k, v in self.crypto.items()
+            })
+
+@dataclass
+class ServerConfig:
+    url: str
+    timeout: int
+    collection_interval: int
+
+@dataclass
+class Config:
+    SECRET_KEY: str
+    SQLALCHEMY_TRACK_MODIFICATIONS: bool
+    database: DatabaseConfig
+    logging: LoggingConfig
+    transform_rules: TransformRulesConfig
+    server: ServerConfig
+
+    @property
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
+        return self.database.get_database_url()
+
+def load_config():
+    config_path = Path(__file__).parent / 'config.json'
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+            
+    try:
+        with open(config_path, 'r') as f:
+            config_data = json.load(f)
+            
+        return Config(
+            SECRET_KEY=config_data.get('SECRET_KEY', ''),
+            SQLALCHEMY_TRACK_MODIFICATIONS=config_data.get('SQLALCHEMY_TRACK_MODIFICATIONS', False),
+            database=DatabaseConfig(**config_data['database']),
+            logging=LoggingConfig(
+                console_output=ConsoleLoggingConfig(**config_data['logging']['console_output']),
+                file_output=FileLoggingConfig(**config_data['logging']['file_output'])
+            ),
+            transform_rules=TransformRulesConfig(**config_data['transform_rules']),
+            server=ServerConfig(**config_data['server'])
+        )
+    except Exception as e:
+        logging.error(f"Failed to load configuration: {str(e)}")
+        raise

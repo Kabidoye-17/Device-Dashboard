@@ -22,5 +22,22 @@
             "max_bytes": 10485760,
             "backup_count": 5
         }
+    },
+    "transform_rules": {
+        "system": {
+            "cpu_load": {"name": "CPU Load", "unit": "%", "source": "device1"},
+            "ram_usage": {"name": "RAM Usage", "unit": "%", "source": "device1"},
+            "network_sent": {"name": "Network Sent", "unit": "MB", "source": "device1"}
+        },
+        "crypto": {
+            "price": {"name": "{pair} Price", "unit": "USD", "source": "coinbase"},
+            "bid": {"name": "{pair} Bid", "unit": "USD", "source": "coinbase"},
+            "ask": {"name": "{pair} Ask", "unit": "USD", "source": "coinbase"}
+        }
+    },
+    "server": {
+        "url": "http://Kabidoye17.pythonanywhere.com",
+        "timeout": 5,
+        "collection_interval": 10
     }
 }
