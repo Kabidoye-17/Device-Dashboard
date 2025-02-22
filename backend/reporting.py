@@ -13,7 +13,6 @@ class MetricsReporter:
 
     def get_latest_timestamp_metrics(self):
         try:
-  
             latest_timestamp = self.session.query(
                 func.max(MetricMeasurement.timestamp)
             ).scalar()
@@ -26,19 +25,24 @@ class MetricsReporter:
                 MetricMeasurement.timestamp == latest_timestamp
             ).all()
 
-            # Convert to JSON-serializable format
+            # Convert to JSON-serializable format with safe attribute access
             metrics_json = []
             for metric in latest_metrics:
-                metrics_json.append({
+                metric_dict = {
                     'id': metric.id,
                     'name': metric.name,
                     'value': float(metric.value),
                     'timestamp': metric.timestamp.isoformat(),
-                    'device_id': metric.device_id,
-                    'type': metric.metric_type.name if metric.metric_type else None,
-                    'unit': metric.unit.unit_name if metric.unit else None,
-                    'source': metric.source.name if metric.source else None
-                })
+                    'device_id': metric.device_id
+                }
+                
+                # Safely add optional attributes
+                if hasattr(metric, 'unit') and metric.unit:
+                    metric_dict['unit'] = metric.unit.unit_name
+                if hasattr(metric, 'source') and metric.source:
+                    metric_dict['source'] = metric.source.name
+
+                metrics_json.append(metric_dict)
 
             logger.info(f"Retrieved {len(metrics_json)} metrics from timestamp {latest_timestamp}")
             return metrics_json

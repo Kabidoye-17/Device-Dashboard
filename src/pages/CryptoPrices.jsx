@@ -16,22 +16,29 @@ function CryptoPrices() {
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         
-        // Transform crypto data
         const cryptoData = {
-          BTC: null,
-          ETH: null
+          BTC: { timestamp: null },
+          ETH: { timestamp: null }
         };
 
-        // Group metrics by cryptocurrency
+        // Map backend metric names to frontend properties
+        const metricMapping = {
+          'BTC_PRICE': ['BTC', 'price'],
+          'BTC_BID': ['BTC', 'bid'],
+          'BTC_ASK': ['BTC', 'ask'],
+          'ETH_PRICE': ['ETH', 'price'],
+          'ETH_BID': ['ETH', 'bid'],
+          'ETH_ASK': ['ETH', 'ask']
+        };
+
         data.forEach(metric => {
-          const [crypto, metricType] = metric.name.split('_');
-          if (crypto === 'BTC' || crypto === 'ETH') {
-            if (!cryptoData[crypto]) {
-              cryptoData[crypto] = {
-                timestamp: metric.timestamp
-              };
+          if (metric.name in metricMapping) {
+            const [coin, field] = metricMapping[metric.name];
+            if (!cryptoData[coin]) {
+              cryptoData[coin] = { timestamp: metric.timestamp };
             }
-            cryptoData[crypto][metricType.toLowerCase()] = metric.value;
+            cryptoData[coin][field] = metric.value;
+            cryptoData[coin].timestamp = metric.timestamp;
           }
         });
 

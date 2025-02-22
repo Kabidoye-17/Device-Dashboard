@@ -18,19 +18,25 @@ function SystemMetrics() {
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         
-        // Transform metrics data
         const metricsData = {
           cpu_load: 0,
           ram_usage: 0,
           network_sent: 0,
-          timestamp: new Date().toISOString()
+          timestamp: null
+        };
+
+        // Map backend metric names to frontend properties
+        const metricMapping = {
+          'CPU_LOAD': 'cpu_load',
+          'RAM_USAGE': 'ram_usage',
+          'NETWORK_SENT': 'network_sent'
         };
 
         data.forEach(metric => {
-          if (metric.name === 'CPU_LOAD') metricsData.cpu_load = metric.value;
-          if (metric.name === 'RAM_USAGE') metricsData.ram_usage = metric.value;
-          if (metric.name === 'NETWORK_SENT') metricsData.network_sent = metric.value;
-          metricsData.timestamp = metric.timestamp;
+          if (metric.name in metricMapping) {
+            metricsData[metricMapping[metric.name]] = metric.value;
+            metricsData.timestamp = metric.timestamp;
+          }
         });
 
         setMetrics(metricsData);
