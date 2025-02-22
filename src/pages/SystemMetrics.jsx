@@ -14,7 +14,7 @@ function SystemMetrics() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const response = await fetch(`${apiUrl}/metrics/latest-batch`);
+        const response = await fetch(`${apiUrl}/api/metrics/latest-batch`);
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         
