@@ -24,7 +24,7 @@ class UploaderQueue:
         self.registry = CollectorRegistry()
         
         # Register collectors
-        self.registry.register('system', SystemCollector())
+        self.registry.register('system', SystemCollector('device1'))
         self.registry.register('crypto', CryptoCollector())
 
     def format_metrics(self, raw_metrics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
