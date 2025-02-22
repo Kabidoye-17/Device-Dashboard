@@ -5,6 +5,7 @@ from utils.logger import get_logger, setup_logger
 import traceback
 from aggregator import DatabaseAggregator
 from config.config import load_config
+from reporting import MetricsReporter
 
 # Initialize application with config
 app = Flask(__name__)
@@ -29,6 +30,14 @@ except Exception as e:
     logger.critical(f"Failed to initialize database aggregator: {str(e)}")
     raise
 
+try:
+    metrics_reporter = MetricsReporter(config.SQLALCHEMY_DATABASE_URI)
+    logger.info("Metrics reporter initialized successfully")
+except Exception as e:
+    logger.critical(f"Failed to initialize Metrics reporter: {str(e)}")
+    raise
+
+
 # Update route from /api/metrics/metrics to /api/metrics
 @app.route('/api/metrics', methods=['POST', 'GET'])
 def handle_metrics():
@@ -52,6 +61,16 @@ def handle_metrics():
         except Exception as e:
             logger.error(f"Error fetching metrics: {str(e)}")
             return jsonify({'error': str(e)}), 500
+
+@app.route('/api/metrics/latest-batch', methods=['GET'])
+def get_latest_batch():
+    logger.debug("Handling GET request to /api/metrics/latest-batch")
+    try:
+        metrics = metrics_reporter.get_latest_timestamp_metrics()
+        return jsonify(metrics), 200
+    except Exception as e:
+        logger.error(f"Error fetching latest batch metrics: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 # Add a test route to verify the application is running
 @app.route('/', methods=['GET'])
