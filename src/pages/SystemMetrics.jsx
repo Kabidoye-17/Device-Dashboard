@@ -69,6 +69,9 @@ function SystemMetrics() {
               metricsData.network_sent = value;
               metricsData.timestamp = metric.timestamp;
               break;
+            default:
+              console.debug('Unhandled system metric:', metric.name);
+              break;
           }
         });
 
