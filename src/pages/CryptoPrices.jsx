@@ -1,45 +1,74 @@
 import React, { useState, useEffect } from 'react';
 import { apiUrl } from '../config';
-import { ErrorContainer, RetryButton } from '../styles/StyledComponents';
-import { data } from 'react-router-dom';
+import { ErrorContainer, RetryButton, MetricsGrid } from '../styles/StyledComponents';
 
 function CryptoPrices() {
+  const [cryptoMetrics, setCryptoMetrics] = useState({
+    BTC: { price: 0, bid: 0, ask: 0, timestamp: '-' },
+    ETH: { price: 0, bid: 0, ask: 0, timestamp: '-' }
+  });
   const [error, setError] = useState(null);
 
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid timestamp:', timestamp);
+        return 'Invalid timestamp';
+      }
+      return date.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' });
+    } catch (error) {
+      console.error('Error formatting timestamp:', error);
+      return 'Error formatting time';
+    }
+  };
+
   useEffect(() => {
-    const fetchCryptoPrices = async () => {
+    const fetchCryptoMetrics = async () => {
       try {
         const response = await fetch(`${apiUrl}/api/metrics/latest-batch`);
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         
-        console.log('Raw API response:', data); // Debug log
+        console.log('Raw crypto data:', data);
 
+        const metricsData = {
+          BTC: { price: 0, bid: 0, ask: 0, timestamp: '-' },
+          ETH: { price: 0, bid: 0, ask: 0, timestamp: '-' }
+        };
+
+        data.forEach(metric => {
+          if (!metric || typeof metric !== 'object' || metric.type !== 'crypto') return;
+          const value = parseFloat(metric.value) || 0;
+
+          if (metric.name.startsWith('BTC-USD')) {
+            if (metric.name.includes('Price')) metricsData.BTC.price = value;
+            else if (metric.name.includes('Bid')) metricsData.BTC.bid = value;
+            else if (metric.name.includes('Ask')) metricsData.BTC.ask = value;
+            metricsData.BTC.timestamp = metric.timestamp;
+          }
+          
+          if (metric.name.startsWith('ETH-USD')) {
+            if (metric.name.includes('Price')) metricsData.ETH.price = value;
+            else if (metric.name.includes('Bid')) metricsData.ETH.bid = value;
+            else if (metric.name.includes('Ask')) metricsData.ETH.ask = value;
+            metricsData.ETH.timestamp = metric.timestamp;
+          }
+        });
+
+        console.log('Processed crypto metrics:', metricsData);
+        setCryptoMetrics(metricsData);
       } catch (error) {
         console.error('Fetch error:', error);
         setError(error.message);
       }
     };
 
-    fetchCryptoPrices();
-    const interval = setInterval(fetchCryptoPrices, 5000); // Update every 5 seconds
+    fetchCryptoMetrics();
+    const interval = setInterval(fetchCryptoMetrics, 5000);
     return () => clearInterval(interval);
   }, []);
-
-  // const formatPrice = (price, decimals = 2) => {
-  //   if (price === null) return 'Loading...';
-  //   return `$${Number(price).toFixed(decimals)}`;
-  // };
-
-  // const renderCryptoCard = (symbol, data, decimals = 2) => (
-  //   <Card key={symbol}>
-  //     <h3>{symbol}</h3>
-  //     <p>Price: {formatPrice(data?.price, decimals)}</p>
-  //     <p>Bid: {formatPrice(data?.bid, decimals)}</p>
-  //     <p>Ask: {formatPrice(data?.ask, decimals)}</p>
-  //     <p>Last Updated: {data?.timestamp ? new Date(data.timestamp).toLocaleString() : 'Never'}</p>
-  //   </Card>
-  // );
 
   if (error) {
     return (
@@ -54,11 +83,22 @@ function CryptoPrices() {
 
   return (
     <div>
-      <h1>Cryptocurrency Prices</h1>
+      <h1>Crypto Metrics</h1>
+      <MetricsGrid>
+        <div><strong>BTC-USD</strong></div>
+        <div>Price: ${cryptoMetrics.BTC.price.toFixed(2)}</div>
+        <div>Bid: ${cryptoMetrics.BTC.bid.toFixed(2)}</div>
+        <div>Ask: ${cryptoMetrics.BTC.ask.toFixed(2)}</div>
+        <div>Last Updated: {formatTimestamp(cryptoMetrics.BTC.timestamp)}</div>
 
-      <div>{data[0].name}</div>
+        <div><strong>ETH-USD</strong></div>
+        <div>Price: ${cryptoMetrics.ETH.price.toFixed(2)}</div>
+        <div>Bid: ${cryptoMetrics.ETH.bid.toFixed(2)}</div>
+        <div>Ask: ${cryptoMetrics.ETH.ask.toFixed(2)}</div>
+        <div>Last Updated: {formatTimestamp(cryptoMetrics.ETH.timestamp)}</div>
+      </MetricsGrid>
     </div>
   );
 }
 
-export default CryptoPrices;
+export default CryptoMetrics;
