@@ -18,34 +18,40 @@ function CryptoPrices() {
         
         console.log('Raw API response:', data); // Debug log
 
-        if (!Array.isArray(data)) {
-          console.error('Expected array of metrics, got:', typeof data);
-          return;
-        }
-
         const cryptoData = {
           BTC: { price: 0, bid: 0, ask: 0, timestamp: null },
           ETH: { price: 0, bid: 0, ask: 0, timestamp: null }
         };
 
         data.forEach(metric => {
-          if (!metric || typeof metric !== 'object') {
-            console.warn('Invalid metric object:', metric);
-            return;
-          }
-
-          console.log('Processing metric:', metric); // Debug log
+          if (!metric || typeof metric !== 'object') return;
+          
           const value = parseFloat(metric.value) || 0;
+          const name = metric.name;
 
-          // Simplified mapping logic
-          if (metric.name.startsWith('BTC_')) {
-            const field = metric.name.replace('BTC_', '').toLowerCase();
-            cryptoData.BTC[field] = value;
-            cryptoData.BTC.timestamp = metric.timestamp;
-          } else if (metric.name.startsWith('ETH_')) {
-            const field = metric.name.replace('ETH_', '').toLowerCase();
-            cryptoData.ETH[field] = value;
-            cryptoData.ETH.timestamp = metric.timestamp;
+          // Updated name matching for actual metric names
+          if (name.startsWith('BTC-USD')) {
+            if (name === 'BTC-USD Ask') {
+              cryptoData.BTC.ask = value;
+              cryptoData.BTC.timestamp = metric.timestamp;
+            } else if (name === 'BTC-USD Bid') {
+              cryptoData.BTC.bid = value;
+              cryptoData.BTC.timestamp = metric.timestamp;
+            } else if (name === 'BTC-USD Price') {
+              cryptoData.BTC.price = value;
+              cryptoData.BTC.timestamp = metric.timestamp;
+            }
+          } else if (name.startsWith('ETH-USD')) {
+            if (name === 'ETH-USD Ask') {
+              cryptoData.ETH.ask = value;
+              cryptoData.ETH.timestamp = metric.timestamp;
+            } else if (name === 'ETH-USD Bid') {
+              cryptoData.ETH.bid = value;
+              cryptoData.ETH.timestamp = metric.timestamp;
+            } else if (name === 'ETH-USD Price') {
+              cryptoData.ETH.price = value;
+              cryptoData.ETH.timestamp = metric.timestamp;
+            }
           }
         });
 

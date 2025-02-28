@@ -41,12 +41,7 @@ function SystemMetrics() {
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         
-        console.log('Received metrics data:', data); // Debug log
-
-        if (!Array.isArray(data)) {
-          console.error('Expected array of metrics, got:', typeof data);
-          return;
-        }
+        console.log('Raw metrics data:', data);
 
         const metricsData = {
           cpu_load: 0,
@@ -55,34 +50,30 @@ function SystemMetrics() {
           timestamp: null
         };
 
-        // Map backend metric names to frontend properties and handle numerical conversions
         data.forEach(metric => {
           if (!metric || typeof metric !== 'object') return;
           
           const value = parseFloat(metric.value) || 0;
           
+          // Updated name matching
           switch(metric.name) {
-            case 'CPU_LOAD':
+            case 'CPU Load':
               metricsData.cpu_load = value;
+              metricsData.timestamp = metric.timestamp;
               break;
-            case 'RAM_USAGE':
+            case 'RAM Usage':
               metricsData.ram_usage = value;
+              metricsData.timestamp = metric.timestamp;
               break;
-            case 'NETWORK_SENT':
+            case 'Network Sent':
               metricsData.network_sent = value;
+              metricsData.timestamp = metric.timestamp;
               break;
-            default:
-              console.debug('Unhandled metric:', metric.name);
-          }
-
-          if (!metricsData.timestamp && metric.timestamp) {
-            metricsData.timestamp = metric.timestamp;
           }
         });
 
-        console.log('Processed metrics data:', metricsData); // Debug log
+        console.log('Processed metrics:', metricsData);
         setMetrics(metricsData);
-        setError(null);
       } catch (error) {
         console.error('Fetch error:', error);
         setError(error.message);
