@@ -58,6 +58,26 @@ class DatabaseAggregator:
         finally:
             self.cleanup_session(session)
 
+    def validate_timestamp(self, timestamp_value):
+        """Validate and convert timestamp to datetime object"""
+        try:
+            if isinstance(timestamp_value, (int, float)):
+                return datetime.fromtimestamp(timestamp_value, tz=timezone.utc)
+            elif isinstance(timestamp_value, str):
+                try:
+                    # Try parsing as float first
+                    return datetime.fromtimestamp(float(timestamp_value), tz=timezone.utc)
+                except ValueError:
+                    # Try parsing as ISO format
+                    return datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
+            elif timestamp_value is None:
+                return datetime.now(timezone.utc)
+            else:
+                raise ValueError(f"Invalid timestamp format: {timestamp_value}")
+        except Exception as e:
+            logger.warning(f"Invalid timestamp {timestamp_value}, using current time. Error: {str(e)}")
+            return datetime.now(timezone.utc)
+
     def store_metrics(self, metrics_data):
         session = self.get_session()
         try:
@@ -72,12 +92,7 @@ class DatabaseAggregator:
                     logger.warning(f"Invalid metric value: {metric.get('value')}. Skipping.")
                     continue
 
-                # Ensure timestamp is properly formatted
-                try:
-                    timestamp = datetime.fromtimestamp(float(metric.get('timestamp', datetime.utcnow().timestamp())))
-                except (ValueError, TypeError):
-                    timestamp = datetime.now(timezone.utc)
-                    logger.warning(f"Invalid timestamp, using current time")
+                timestamp = self.validate_timestamp(metric.get('timestamp'))
 
                 m_type = self.get_or_create(
                     MetricType,

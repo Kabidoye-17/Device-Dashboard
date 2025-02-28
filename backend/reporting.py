@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, desc
 from models.db_models import MetricMeasurement
 from sqlalchemy.orm import sessionmaker
 from utils.logger import get_logger
@@ -8,48 +8,47 @@ logger = get_logger(__name__)
 class MetricsReporter:
     def __init__(self, connection_string):
         self.engine = create_engine(connection_string)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
+        self.Session = sessionmaker(bind=self.engine)
 
     def get_latest_timestamp_metrics(self):
+        """Get the most recent metrics for each unique metric name"""
+        session = self.Session()
         try:
-            latest_timestamp = self.session.query(
-                func.max(MetricMeasurement.timestamp)
-            ).scalar()
+            logger.debug("Fetching latest timestamp metrics")
+            
+            # Get the latest timestamp
+            subquery = session.query(
+                MetricMeasurement.name,
+                desc(MetricMeasurement.timestamp)
+            ).group_by(
+                MetricMeasurement.name
+            ).subquery()
 
-            if not latest_timestamp:
-                logger.warning("No metrics found in database")
-                return []
-
-            latest_metrics = self.session.query(MetricMeasurement).filter(
-                MetricMeasurement.timestamp == latest_timestamp
+            # Get the full metrics data for the latest timestamp
+            metrics = session.query(MetricMeasurement).filter(
+                (MetricMeasurement.name == subquery.c.name) &
+                (MetricMeasurement.timestamp == subquery.c.timestamp)
             ).all()
 
-            # Convert to JSON-serializable format with safe attribute access
-            metrics_json = []
-            for metric in latest_metrics:
-                metric_dict = {
-                    'id': metric.id,
+            result = [
+                {
                     'name': metric.name,
-                    'value': float(metric.value),
-                    'timestamp': metric.timestamp.isoformat(),
-                    'device_id': metric.device_id
+                    'value': float(metric.value),  # Ensure numeric values
+                    'timestamp': metric.timestamp.isoformat(),  # ISO format timestamp
+                    'type': metric.type.name if metric.type else 'unknown',
+                    'unit': metric.unit.unit_name if metric.unit else 'unknown'
                 }
-                
-                # Safely add optional attributes
-                if hasattr(metric, 'unit') and metric.unit:
-                    metric_dict['unit'] = metric.unit.unit_name
-                if hasattr(metric, 'source') and metric.source:
-                    metric_dict['source'] = metric.source.name
-
-                metrics_json.append(metric_dict)
-
-            logger.info(f"Retrieved {len(metrics_json)} metrics from timestamp {latest_timestamp}")
-            return metrics_json
+                for metric in metrics
+            ]
+            
+            logger.debug(f"Returning {len(result)} metrics: {result}")
+            return result
 
         except Exception as e:
-            logger.error(f"Error fetching latest timestamp metrics: {str(e)}")
+            logger.error(f"Error getting latest timestamp metrics: {str(e)}")
             raise
+        finally:
+            session.close()
 
     def __del__(self):
         self.session.close()

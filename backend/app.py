@@ -62,6 +62,7 @@ def get_latest_batch():
     logger.debug("Handling GET request to /api/metrics/latest-batch")
     try:
         metrics = metrics_reporter.get_latest_timestamp_metrics()
+        logger.debug(f"Returning metrics data: {metrics}")  # Debug log
         return jsonify(metrics), 200
     except Exception as e:
         logger.error(f"Error in get_latest_batch: {str(e)}")

@@ -16,32 +16,40 @@ function CryptoPrices() {
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         
-        const cryptoData = {
-          BTC: { timestamp: null },
-          ETH: { timestamp: null }
-        };
+        console.log('Raw API response:', data); // Debug log
 
-        // Map backend metric names to frontend properties
-        const metricMapping = {
-          'BTC_PRICE': ['BTC', 'price'],
-          'BTC_BID': ['BTC', 'bid'],
-          'BTC_ASK': ['BTC', 'ask'],
-          'ETH_PRICE': ['ETH', 'price'],
-          'ETH_BID': ['ETH', 'bid'],
-          'ETH_ASK': ['ETH', 'ask']
+        if (!Array.isArray(data)) {
+          console.error('Expected array of metrics, got:', typeof data);
+          return;
+        }
+
+        const cryptoData = {
+          BTC: { price: 0, bid: 0, ask: 0, timestamp: null },
+          ETH: { price: 0, bid: 0, ask: 0, timestamp: null }
         };
 
         data.forEach(metric => {
-          if (metric.name in metricMapping) {
-            const [coin, field] = metricMapping[metric.name];
-            if (!cryptoData[coin]) {
-              cryptoData[coin] = { timestamp: metric.timestamp };
-            }
-            cryptoData[coin][field] = metric.value;
-            cryptoData[coin].timestamp = metric.timestamp;
+          if (!metric || typeof metric !== 'object') {
+            console.warn('Invalid metric object:', metric);
+            return;
+          }
+
+          console.log('Processing metric:', metric); // Debug log
+          const value = parseFloat(metric.value) || 0;
+
+          // Simplified mapping logic
+          if (metric.name.startsWith('BTC_')) {
+            const field = metric.name.replace('BTC_', '').toLowerCase();
+            cryptoData.BTC[field] = value;
+            cryptoData.BTC.timestamp = metric.timestamp;
+          } else if (metric.name.startsWith('ETH_')) {
+            const field = metric.name.replace('ETH_', '').toLowerCase();
+            cryptoData.ETH[field] = value;
+            cryptoData.ETH.timestamp = metric.timestamp;
           }
         });
 
+        console.log('Processed crypto data:', cryptoData); // Debug log
         setCryptoPrices(cryptoData);
         setError(null);
       } catch (error) {
@@ -56,22 +64,17 @@ function CryptoPrices() {
   }, []);
 
   const formatPrice = (price, decimals = 2) => {
-    return price ? `$${parseFloat(price).toFixed(decimals)}` : 'Loading...';
+    if (!price && price !== 0) return 'Loading...';
+    return `$${Number(price).toFixed(decimals)}`;
   };
 
   const renderCryptoCard = (symbol, data, decimals = 2) => (
     <Card>
       <h3>{symbol}</h3>
-      {data ? (
-        <>
-          <p>Price: {formatPrice(data.price, decimals)}</p>
-          <p>Bid: {formatPrice(data.bid, decimals)}</p>
-          <p>Ask: {formatPrice(data.ask, decimals)}</p>
-          <p>Last Updated: {new Date(data.timestamp).toLocaleString()}</p>
-        </>
-      ) : (
-        <p>Loading {symbol} data...</p>
-      )}
+      <p>Price: {formatPrice(data?.price, decimals)}</p>
+      <p>Bid: {formatPrice(data?.bid, decimals)}</p>
+      <p>Ask: {formatPrice(data?.ask, decimals)}</p>
+      <p>Last Updated: {data?.timestamp ? new Date(data.timestamp).toLocaleString() : 'Never'}</p>
     </Card>
   );
 
