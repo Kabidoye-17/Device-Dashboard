@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SQLAlchemyError
 from models.db_models import Base, MetricType, Unit, Source, MetricMeasurement
 from datetime import datetime, timezone
@@ -14,12 +14,21 @@ class DatabaseAggregator:
             logger.info("Initializing database connection...")
             self.engine = create_engine(connection_string, pool_recycle=280)  # Add pool_recycle for MySQL
             Base.metadata.create_all(self.engine)
-            Session = sessionmaker(bind=self.engine)
-            self.session = Session()
+            self.Session = scoped_session(sessionmaker(bind=self.engine))
             logger.info("Database connection established successfully")
         except SQLAlchemyError as e:
             logger.error(f"Failed to initialize database: {str(e)}")
             raise
+
+    def get_session(self):
+        return self.Session()
+
+    def cleanup_session(self, session):
+        try:
+            session.close()
+            self.Session.remove()
+        except Exception as e:
+            logger.error(f"Error cleaning up session: {str(e)}")
 
     def verify_connection(self):
         """Verify database connection is working"""
@@ -32,21 +41,25 @@ class DatabaseAggregator:
             return False
 
     def get_or_create(self, model, **kwargs):
+        session = self.get_session()
         try:
-            instance = self.session.query(model).filter_by(**kwargs).first()
+            instance = session.query(model).filter_by(**kwargs).first()
             if instance:
                 return instance
             instance = model(**kwargs)
-            self.session.add(instance)
-            self.session.commit()
+            session.add(instance)
+            session.commit()
             logger.debug(f"Created new {model.__name__}: {kwargs}")
             return instance
         except SQLAlchemyError as e:
-            self.session.rollback()
+            session.rollback()
             logger.error(f"Error in get_or_create for {model.__name__}: {str(e)}")
             raise
+        finally:
+            self.cleanup_session(session)
 
     def store_metrics(self, metrics_data):
+        session = self.get_session()
         try:
             logger.info(f"Storing {len(metrics_data)} metrics")
             for metric in metrics_data:
@@ -90,24 +103,30 @@ class DatabaseAggregator:
                     timestamp=timestamp,
                     device_id=str(metric.get('device_id', None))
                 )
-                self.session.add(measurement)
+                session.add(measurement)
             
-            self.session.commit()
+            session.commit()
             logger.info("Successfully stored all metrics")
             return True
             
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             logger.error(f"Error storing metrics: {str(e)}")
             raise
+        finally:
+            self.cleanup_session(session)
 
     def get_latest_metrics(self):
+        session = self.get_session()
         try:
             logger.debug("Fetching latest metrics")
-            metrics = self.session.query(MetricMeasurement).order_by(MetricMeasurement.timestamp.desc()).all()
+            metrics = session.query(MetricMeasurement).order_by(MetricMeasurement.timestamp.desc()).all()
             metrics_list = [metric.to_dict() for metric in metrics]
             logger.info(f"Retrieved {len(metrics_list)} metrics")
             return metrics_list
         except SQLAlchemyError as e:
+            session.rollback()
             logger.error(f"Error fetching metrics: {str(e)}")
             raise
+        finally:
+            self.cleanup_session(session)

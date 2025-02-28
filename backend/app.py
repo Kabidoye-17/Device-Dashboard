@@ -42,25 +42,20 @@ except Exception as e:
 @app.route('/api/metrics', methods=['POST', 'GET'])
 def handle_metrics():
     logger.debug(f"Handling {request.method} request to /api/metrics")
-    if request.method == 'POST':
-        try:
+    try:
+        if request.method == 'POST':
             metrics_data = request.json
             if not metrics_data:
                 return jsonify({'error': 'No metrics data received'}), 400
 
             db_aggregator.store_metrics(metrics_data)
             return jsonify({'status': 'success', 'count': len(metrics_data)}), 200
-
-        except Exception as e:
-            logger.error(f"Error processing metrics: {str(e)}")
-            return jsonify({'error': str(e)}), 500
-    else:  # GET request
-        try:
+        else:  # GET request
             metrics = db_aggregator.get_latest_metrics()
             return jsonify(metrics), 200
-        except Exception as e:
-            logger.error(f"Error fetching metrics: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        logger.error(f"Error in handle_metrics: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/metrics/latest-batch', methods=['GET'])
 def get_latest_batch():
@@ -69,7 +64,7 @@ def get_latest_batch():
         metrics = metrics_reporter.get_latest_timestamp_metrics()
         return jsonify(metrics), 200
     except Exception as e:
-        logger.error(f"Error fetching latest batch metrics: {str(e)}")
+        logger.error(f"Error in get_latest_batch: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 # Add a test route to verify the application is running
