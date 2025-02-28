@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiUrl } from '../config';
 import { ErrorContainer, RetryButton, GridContainer, Card } from '../styles/StyledComponents';
+import { data } from 'react-router-dom';
 
 function CryptoPrices() {
   const [cryptoPrices, setCryptoPrices] = useState({});
@@ -15,6 +16,7 @@ function CryptoPrices() {
         
         console.log('Raw API response:', data); // Debug log
 
+    
         const cryptoData = {};
 
         data.forEach(metric => {
@@ -80,9 +82,8 @@ function CryptoPrices() {
   return (
     <div>
       <h1>Cryptocurrency Prices</h1>
-      <GridContainer>
-        {Object.entries(cryptoPrices).map(([symbol, data]) => renderCryptoCard(symbol, data, 2))}
-      </GridContainer>
+
+      <div>{data[0].name}</div>
     </div>
   );
 }
