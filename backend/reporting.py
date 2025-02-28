@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, desc
+from sqlalchemy import create_engine, desc, func
 from datetime import datetime
 from models.db_models import MetricMeasurement
 from sqlalchemy.orm import sessionmaker
@@ -17,17 +17,18 @@ class MetricsReporter:
         try:
             logger.debug("Fetching latest timestamp metrics")
             
-            # Get the latest timestamp for each metric name
-            latest_metrics = session.query(
+            # Subquery to get the max timestamp for each metric name
+            latest_timestamps = session.query(
                 MetricMeasurement.name,
-                MetricMeasurement.value,
-                MetricMeasurement.timestamp,
-                MetricMeasurement.type_id,
-                MetricMeasurement.unit_id
-            ).order_by(
-                MetricMeasurement.name,
-                desc(MetricMeasurement.timestamp)
-            ).distinct(MetricMeasurement.name).all()
+                func.max(MetricMeasurement.timestamp).label('max_timestamp')
+            ).group_by(MetricMeasurement.name).subquery()
+
+            # Join with original table to get full records
+            latest_metrics = session.query(MetricMeasurement).join(
+                latest_timestamps,
+                (MetricMeasurement.name == latest_timestamps.c.name) &
+                (MetricMeasurement.timestamp == latest_timestamps.c.max_timestamp)
+            ).all()
 
             result = []
             for metric in latest_metrics:
@@ -36,7 +37,7 @@ class MetricsReporter:
                         'name': metric.name,
                         'value': float(metric.value),
                         'timestamp': metric.timestamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                        'type': 'system'  # Default type
+                        'type': metric.type.name if metric.type else 'system'
                     }
                     result.append(metric_dict)
                 except Exception as e:
