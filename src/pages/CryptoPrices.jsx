@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { apiUrl } from '../config';
-import { ErrorContainer, RetryButton, GridContainer, Card } from '../styles/StyledComponents';
+import { ErrorContainer, RetryButton } from '../styles/StyledComponents';
 import { data } from 'react-router-dom';
 
 function CryptoPrices() {
-  const [cryptoPrices, setCryptoPrices] = useState({});
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -16,32 +15,6 @@ function CryptoPrices() {
         
         console.log('Raw API response:', data); // Debug log
 
-    
-        const cryptoData = {};
-
-        data.forEach(metric => {
-          if (metric.type === 'crypto') {
-            const { name, value, timestamp } = metric;
-            const [symbol, metricType] = name.split(' ');
-            
-            if (!cryptoData[symbol]) {
-              cryptoData[symbol] = { price: null, bid: null, ask: null, timestamp: null };
-            }
-
-            if (metricType === 'Price') {
-              cryptoData[symbol].price = value;
-            } else if (metricType === 'Bid') {
-              cryptoData[symbol].bid = value;
-            } else if (metricType === 'Ask') {
-              cryptoData[symbol].ask = value;
-            }
-            cryptoData[symbol].timestamp = timestamp;
-          }
-        });
-
-        console.log('Processed crypto data:', cryptoData); // Debug log
-        setCryptoPrices(cryptoData);
-        setError(null);
       } catch (error) {
         console.error('Fetch error:', error);
         setError(error.message);
@@ -53,20 +26,20 @@ function CryptoPrices() {
     return () => clearInterval(interval);
   }, []);
 
-  const formatPrice = (price, decimals = 2) => {
-    if (price === null) return 'Loading...';
-    return `$${Number(price).toFixed(decimals)}`;
-  };
+  // const formatPrice = (price, decimals = 2) => {
+  //   if (price === null) return 'Loading...';
+  //   return `$${Number(price).toFixed(decimals)}`;
+  // };
 
-  const renderCryptoCard = (symbol, data, decimals = 2) => (
-    <Card key={symbol}>
-      <h3>{symbol}</h3>
-      <p>Price: {formatPrice(data?.price, decimals)}</p>
-      <p>Bid: {formatPrice(data?.bid, decimals)}</p>
-      <p>Ask: {formatPrice(data?.ask, decimals)}</p>
-      <p>Last Updated: {data?.timestamp ? new Date(data.timestamp).toLocaleString() : 'Never'}</p>
-    </Card>
-  );
+  // const renderCryptoCard = (symbol, data, decimals = 2) => (
+  //   <Card key={symbol}>
+  //     <h3>{symbol}</h3>
+  //     <p>Price: {formatPrice(data?.price, decimals)}</p>
+  //     <p>Bid: {formatPrice(data?.bid, decimals)}</p>
+  //     <p>Ask: {formatPrice(data?.ask, decimals)}</p>
+  //     <p>Last Updated: {data?.timestamp ? new Date(data.timestamp).toLocaleString() : 'Never'}</p>
+  //   </Card>
+  // );
 
   if (error) {
     return (
