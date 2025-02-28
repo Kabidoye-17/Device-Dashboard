@@ -3,10 +3,7 @@ import { apiUrl } from '../config';
 import { ErrorContainer, RetryButton, GridContainer, Card } from '../styles/StyledComponents';
 
 function CryptoPrices() {
-  const [cryptoPrices, setCryptoPrices] = useState({
-    BTC: null,
-    ETH: null
-  });
+  const [cryptoPrices, setCryptoPrices] = useState({});
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -18,40 +15,25 @@ function CryptoPrices() {
         
         console.log('Raw API response:', data); // Debug log
 
-        const cryptoData = {
-          BTC: { price: 0, bid: 0, ask: 0, timestamp: null },
-          ETH: { price: 0, bid: 0, ask: 0, timestamp: null }
-        };
+        const cryptoData = {};
 
         data.forEach(metric => {
-          if (!metric || typeof metric !== 'object') return;
-          
-          const value = parseFloat(metric.value) || 0;
-          const name = metric.name;
+          if (metric.type === 'crypto') {
+            const { name, value, timestamp } = metric;
+            const [symbol, metricType] = name.split(' ');
+            
+            if (!cryptoData[symbol]) {
+              cryptoData[symbol] = { price: null, bid: null, ask: null, timestamp: null };
+            }
 
-          // Updated name matching for actual metric names
-          if (name.startsWith('BTC-USD')) {
-            if (name === 'BTC-USD Ask') {
-              cryptoData.BTC.ask = value;
-              cryptoData.BTC.timestamp = metric.timestamp;
-            } else if (name === 'BTC-USD Bid') {
-              cryptoData.BTC.bid = value;
-              cryptoData.BTC.timestamp = metric.timestamp;
-            } else if (name === 'BTC-USD Price') {
-              cryptoData.BTC.price = value;
-              cryptoData.BTC.timestamp = metric.timestamp;
+            if (metricType === 'Price') {
+              cryptoData[symbol].price = value;
+            } else if (metricType === 'Bid') {
+              cryptoData[symbol].bid = value;
+            } else if (metricType === 'Ask') {
+              cryptoData[symbol].ask = value;
             }
-          } else if (name.startsWith('ETH-USD')) {
-            if (name === 'ETH-USD Ask') {
-              cryptoData.ETH.ask = value;
-              cryptoData.ETH.timestamp = metric.timestamp;
-            } else if (name === 'ETH-USD Bid') {
-              cryptoData.ETH.bid = value;
-              cryptoData.ETH.timestamp = metric.timestamp;
-            } else if (name === 'ETH-USD Price') {
-              cryptoData.ETH.price = value;
-              cryptoData.ETH.timestamp = metric.timestamp;
-            }
+            cryptoData[symbol].timestamp = timestamp;
           }
         });
 
@@ -70,12 +52,12 @@ function CryptoPrices() {
   }, []);
 
   const formatPrice = (price, decimals = 2) => {
-    if (!price && price !== 0) return 'Loading...';
+    if (price === null) return 'Loading...';
     return `$${Number(price).toFixed(decimals)}`;
   };
 
   const renderCryptoCard = (symbol, data, decimals = 2) => (
-    <Card>
+    <Card key={symbol}>
       <h3>{symbol}</h3>
       <p>Price: {formatPrice(data?.price, decimals)}</p>
       <p>Bid: {formatPrice(data?.bid, decimals)}</p>
@@ -99,8 +81,7 @@ function CryptoPrices() {
     <div>
       <h1>Cryptocurrency Prices</h1>
       <GridContainer>
-        {renderCryptoCard('Bitcoin (BTC)', cryptoPrices.BTC, 2)}
-        {renderCryptoCard('Ethereum (ETH)', cryptoPrices.ETH, 2)}
+        {Object.entries(cryptoPrices).map(([symbol, data]) => renderCryptoCard(symbol, data, 2))}
       </GridContainer>
     </div>
   );
