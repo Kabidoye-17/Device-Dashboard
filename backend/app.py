@@ -51,7 +51,7 @@ def handle_metrics():
             db_aggregator.store_metrics(metrics_data)
             return jsonify({'status': 'success', 'count': len(metrics_data)}), 200
         else:  # GET request
-            metrics = db_aggregator.get_latest_metrics()
+            metrics = db_aggregator.get_latest_metrics(limit=50)  # Add limit parameter
             return jsonify(metrics), 200
     except Exception as e:
         logger.error(f"Error in handle_metrics: {str(e)}")

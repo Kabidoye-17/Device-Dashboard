@@ -101,4 +101,4 @@ function CryptoPrices() {
   );
 }
 
-export default CryptoMetrics;
+export default CryptoPrices;

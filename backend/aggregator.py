@@ -131,11 +131,14 @@ class DatabaseAggregator:
         finally:
             self.cleanup_session(session)
 
-    def get_latest_metrics(self):
+    def get_latest_metrics(self, limit=50):
         session = self.get_session()
         try:
-            logger.debug("Fetching latest metrics")
-            metrics = session.query(MetricMeasurement).order_by(MetricMeasurement.timestamp.desc()).all()
+            logger.debug(f"Fetching latest {limit} metrics")
+            metrics = session.query(MetricMeasurement)\
+                .order_by(MetricMeasurement.timestamp.desc())\
+                .limit(limit)\
+                .all()
             metrics_list = [metric.to_dict() for metric in metrics]
             logger.info(f"Retrieved {len(metrics_list)} metrics")
             return metrics_list
