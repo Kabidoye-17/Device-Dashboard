@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { apiUrl } from '../config';
+import ChartCard from '../components/ChartCard';
 import { ErrorContainer, RetryButton, MetricsGrid } from '../styles/StyledComponents';
 
 function CryptoPrices() {
   const [cryptoMetrics, setCryptoMetrics] = useState({
     BTC: { price: 0, bid: 0, ask: 0, timestamp: '-' },
     ETH: { price: 0, bid: 0, ask: 0, timestamp: '-' }
+  });
+  const [historicalData, setHistoricalData] = useState({
+    BTC: [],
+    ETH: []
   });
   const [error, setError] = useState(null);
 
@@ -30,8 +35,6 @@ function CryptoPrices() {
         const response = await fetch(`${apiUrl}/api/metrics/latest-batch`);
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
-        
-        console.log('Raw crypto data:', data);
 
         const metricsData = {
           BTC: { price: 0, bid: 0, ask: 0, timestamp: '-' },
@@ -42,22 +45,22 @@ function CryptoPrices() {
           if (!metric || typeof metric !== 'object' || metric.type !== 'crypto') return;
           const value = parseFloat(metric.value) || 0;
 
-          if (metric.name.startsWith('BTC-USD')) {
-            if (metric.name.includes('Price')) metricsData.BTC.price = value;
-            else if (metric.name.includes('Bid')) metricsData.BTC.bid = value;
-            else if (metric.name.includes('Ask')) metricsData.BTC.ask = value;
-            metricsData.BTC.timestamp = metric.timestamp;
-          }
-          
-          if (metric.name.startsWith('ETH-USD')) {
-            if (metric.name.includes('Price')) metricsData.ETH.price = value;
-            else if (metric.name.includes('Bid')) metricsData.ETH.bid = value;
-            else if (metric.name.includes('Ask')) metricsData.ETH.ask = value;
-            metricsData.ETH.timestamp = metric.timestamp;
-          }
+          ['BTC', 'ETH'].forEach(coin => {
+            if (metric.name.startsWith(`${coin}-USD`)) {
+              if (metric.name.includes('Price')) metricsData[coin].price = value;
+              else if (metric.name.includes('Bid')) metricsData[coin].bid = value;
+              else if (metric.name.includes('Ask')) metricsData[coin].ask = value;
+              metricsData[coin].timestamp = metric.timestamp;
+            }
+          });
         });
 
-        console.log('Processed crypto metrics:', metricsData);
+        // Update historical data
+        setHistoricalData(prev => ({
+          BTC: [...prev.BTC.slice(-19), metricsData.BTC],
+          ETH: [...prev.ETH.slice(-19), metricsData.ETH]
+        }));
+        
         setCryptoMetrics(metricsData);
       } catch (error) {
         console.error('Fetch error:', error);
@@ -84,6 +87,62 @@ function CryptoPrices() {
   return (
     <div>
       <h1>Crypto Metrics</h1>
+      
+      {/* Charts Section */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        gap: '20px',
+        marginBottom: '30px'
+      }}>
+        {/* BTC Charts */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          gap: '20px'
+        }}>
+          <ChartCard 
+            coin="BTC"
+            priceType="price"
+            data={historicalData.BTC}
+          />
+          <ChartCard 
+            coin="BTC"
+            priceType="ask"
+            data={historicalData.BTC}
+          />
+          <ChartCard 
+            coin="BTC"
+            priceType="bid"
+            data={historicalData.BTC}
+          />
+        </div>
+
+        {/* ETH Charts */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          gap: '20px'
+        }}>
+          <ChartCard 
+            coin="ETH"
+            priceType="price"
+            data={historicalData.ETH}
+          />
+          <ChartCard 
+            coin="ETH"
+            priceType="ask"
+            data={historicalData.ETH}
+          />
+          <ChartCard 
+            coin="ETH"
+            priceType="bid"
+            data={historicalData.ETH}
+          />
+        </div>
+      </div>
+
+      {/* Existing Metrics Grid */}
       <MetricsGrid>
         <div><strong>BTC-USD</strong></div>
         <div>Price: ${cryptoMetrics.BTC.price.toFixed(2)}</div>
