@@ -6,7 +6,7 @@ import { Container, Navigation, NavList, Link } from './styles/StyledComponents'
 
 function App() {
   return (
-    <Router>
+    <Router basename="/Device-Dashboard">
       <Container>
         <Navigation>
           <NavList>
