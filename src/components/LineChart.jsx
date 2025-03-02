@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -45,7 +45,7 @@ const LineChart = ({ data, priceType, coin }) => {
 
   const colors = getChartColors(priceType);
 
-  const chartData = {
+  const [chartData, setChartData] = useState({
     labels: data.map(entry => new Date(entry.timestamp).toLocaleTimeString()),
     datasets: [{
       label: `${coin}/${priceType.toUpperCase()}`,
@@ -57,7 +57,31 @@ const LineChart = ({ data, priceType, coin }) => {
       pointRadius: 0,
       pointHoverRadius: 5,
     }]
-  };
+  });
+
+  // Create a memoized value to check if data actually changed
+  const dataSignature = useMemo(() => {
+    if (!data || data.length === 0) return '';
+    return data[data.length - 1]?.timestamp || '';
+  }, [data]);
+
+  useEffect(() => {
+    if (data && data.length > 0) {
+      setChartData({
+        labels: data.map(entry => new Date(entry.timestamp).toLocaleTimeString()),
+        datasets: [{
+          label: `${coin}/${priceType.toUpperCase()}`,
+          data: data.map(entry => entry[priceType]),
+          fill: true,
+          backgroundColor: colors.bg,
+          borderColor: colors.border,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+        }]
+      });
+    }
+  }, [dataSignature, priceType, coin, colors.bg, colors.border]); // Only update when signature changes
 
   const options = {
     responsive: true,
@@ -109,7 +133,8 @@ const LineChart = ({ data, priceType, coin }) => {
         },
         ticks: {
           maxTicksLimit: 10, // Limit the number of x-axis labels
-          maxRotation: 45
+          maxRotation: 45,
+          autoSkip: true
         },
         reverse: false // Ensure newest data shows on the right
       },
@@ -120,12 +145,22 @@ const LineChart = ({ data, priceType, coin }) => {
           color: 'rgba(0, 0, 0, 0.1)'
         },
         ticks: {
-          callback: (value) => `$${value.toLocaleString()}`
+          callback: (value) => `$${value.toLocaleString()}`,
+          stepSize: 0.1, // smaller step size for more detailed scale
+          maxTicksLimit: 20 // more ticks on the y-axis
         }
       }
     },
+    elements: {
+      line: {
+        tension: 0.3 // slight curve to make the line smoother
+      },
+      point: {
+        radius: 2 // smaller points for cleaner look
+      }
+    },
     animation: {
-      duration: 750 // Add smooth animation
+      duration: 0 // disable animation for immediate updates
     }
   };
 
@@ -144,4 +179,4 @@ const LineChart = ({ data, priceType, coin }) => {
   );
 };
 
-export default LineChart;
+export default React.memo(LineChart); // Prevent unnecessary re-renders

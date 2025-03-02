@@ -102,16 +102,19 @@ function CryptoPrices() {
           gap: '20px'
         }}>
           <ChartCard 
+            key={`BTC-price-${historicalData.BTC[historicalData.BTC.length - 1]?.timestamp}`}
             coin="BTC"
             priceType="price"
             data={historicalData.BTC}
           />
           <ChartCard 
+            key={`BTC-ask-${historicalData.BTC[historicalData.BTC.length - 1]?.timestamp}`}
             coin="BTC"
             priceType="ask"
             data={historicalData.BTC}
           />
           <ChartCard 
+            key={`BTC-bid-${historicalData.BTC[historicalData.BTC.length - 1]?.timestamp}`}
             coin="BTC"
             priceType="bid"
             data={historicalData.BTC}
@@ -125,16 +128,19 @@ function CryptoPrices() {
           gap: '20px'
         }}>
           <ChartCard 
+            key={`ETH-price-${historicalData.ETH[historicalData.ETH.length - 1]?.timestamp}`}
             coin="ETH"
             priceType="price"
             data={historicalData.ETH}
           />
           <ChartCard 
+            key={`ETH-ask-${historicalData.ETH[historicalData.ETH.length - 1]?.timestamp}`}
             coin="ETH"
             priceType="ask"
             data={historicalData.ETH}
           />
           <ChartCard 
+            key={`ETH-bid-${historicalData.ETH[historicalData.ETH.length - 1]?.timestamp}`}
             coin="ETH"
             priceType="bid"
             data={historicalData.ETH}
