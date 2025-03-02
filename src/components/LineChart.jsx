@@ -23,7 +23,7 @@ ChartJS.register(
 );
 
 const LineChart = ({ data, priceType, coin }) => {
-  const getChartColors = (type) => {
+  const getChartColors = useMemo(() => (type) => {
     switch(type) {
       case 'ask':
         return {
@@ -41,15 +41,15 @@ const LineChart = ({ data, priceType, coin }) => {
           border: 'rgba(247, 147, 26, 1)'
         };
     }
-  };
+  }, []); // Memoize the color function
 
-  const colors = getChartColors(priceType);
+  const colors = useMemo(() => getChartColors(priceType), [getChartColors, priceType]);
 
   const [chartData, setChartData] = useState({
-    labels: data.map(entry => new Date(entry.timestamp).toLocaleTimeString()),
+    labels: [],
     datasets: [{
       label: `${coin}/${priceType.toUpperCase()}`,
-      data: data.map(entry => entry[priceType]),
+      data: [],
       fill: true,
       backgroundColor: colors.bg,
       borderColor: colors.border,
@@ -58,12 +58,6 @@ const LineChart = ({ data, priceType, coin }) => {
       pointHoverRadius: 5,
     }]
   });
-
-  // Create a memoized value to check if data actually changed
-  const dataSignature = useMemo(() => {
-    if (!data || data.length === 0) return '';
-    return data[data.length - 1]?.timestamp || '';
-  }, [data]);
 
   useEffect(() => {
     if (data && data.length > 0) {
@@ -81,7 +75,7 @@ const LineChart = ({ data, priceType, coin }) => {
         }]
       });
     }
-  }, [dataSignature, priceType, coin, colors.bg, colors.border]); // Only update when signature changes
+  }, [data, priceType, coin, colors.bg, colors.border]); // Include all dependencies
 
   const options = {
     responsive: true,
