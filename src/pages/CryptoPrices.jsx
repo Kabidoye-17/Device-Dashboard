@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiUrl } from '../config';
 import ChartCard from '../components/ChartCard';
-import { ErrorContainer, RetryButton, MetricsGrid } from '../styles/StyledComponents';
+import { ErrorContainer, RetryButton } from '../styles/StyledComponents';
 
 function CryptoPrices() {
   const [cryptoMetrics, setCryptoMetrics] = useState({
