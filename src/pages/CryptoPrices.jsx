@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { apiUrl } from '../config';
 import ChartCard from '../components/ChartCard';
 import { ErrorContainer, RetryButton, MetricsGrid } from '../styles/StyledComponents';
@@ -73,6 +73,12 @@ function CryptoPrices() {
     return () => clearInterval(interval);
   }, []);
 
+  // Memoize the historical data for each chart
+  const memoizedHistoricalData = useMemo(() => ({
+    BTC: historicalData.BTC,
+    ETH: historicalData.ETH
+  }), [historicalData.BTC, historicalData.ETH]);
+
   if (error) {
     return (
       <ErrorContainer>
@@ -102,22 +108,19 @@ function CryptoPrices() {
           gap: '20px'
         }}>
           <ChartCard 
-            key={`BTC-price-${historicalData.BTC[historicalData.BTC.length - 1]?.timestamp}`}
             coin="BTC"
             priceType="price"
-            data={historicalData.BTC}
+            data={memoizedHistoricalData.BTC}
           />
           <ChartCard 
-            key={`BTC-ask-${historicalData.BTC[historicalData.BTC.length - 1]?.timestamp}`}
             coin="BTC"
             priceType="ask"
-            data={historicalData.BTC}
+            data={memoizedHistoricalData.BTC}
           />
           <ChartCard 
-            key={`BTC-bid-${historicalData.BTC[historicalData.BTC.length - 1]?.timestamp}`}
             coin="BTC"
             priceType="bid"
-            data={historicalData.BTC}
+            data={memoizedHistoricalData.BTC}
           />
         </div>
 
@@ -128,22 +131,19 @@ function CryptoPrices() {
           gap: '20px'
         }}>
           <ChartCard 
-            key={`ETH-price-${historicalData.ETH[historicalData.ETH.length - 1]?.timestamp}`}
             coin="ETH"
             priceType="price"
-            data={historicalData.ETH}
+            data={memoizedHistoricalData.ETH}
           />
           <ChartCard 
-            key={`ETH-ask-${historicalData.ETH[historicalData.ETH.length - 1]?.timestamp}`}
             coin="ETH"
             priceType="ask"
-            data={historicalData.ETH}
+            data={memoizedHistoricalData.ETH}
           />
           <ChartCard 
-            key={`ETH-bid-${historicalData.ETH[historicalData.ETH.length - 1]?.timestamp}`}
             coin="ETH"
             priceType="bid"
-            data={historicalData.ETH}
+            data={memoizedHistoricalData.ETH}
           />
         </div>
       </div>

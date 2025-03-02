@@ -59,24 +59,6 @@ const LineChart = ({ data, priceType, coin }) => {
     }]
   });
 
-  useEffect(() => {
-    if (data && data.length > 0) {
-      setChartData({
-        labels: data.map(entry => new Date(entry.timestamp).toLocaleTimeString()),
-        datasets: [{
-          label: `${coin}/${priceType.toUpperCase()}`,
-          data: data.map(entry => entry[priceType]),
-          fill: true,
-          backgroundColor: colors.bg,
-          borderColor: colors.border,
-          tension: 0.3,
-          pointRadius: 0,
-          pointHoverRadius: 5,
-        }]
-      });
-    }
-  }, [data, priceType, coin, colors.bg, colors.border]); // Include all dependencies
-
   const options = {
     responsive: true,
     maintainAspectRatio: false,
@@ -134,14 +116,19 @@ const LineChart = ({ data, priceType, coin }) => {
       },
       y: {
         type: 'linear',
-        beginAtZero: true,
+        beginAtZero: false, // Don't start at zero to show more detail
         grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
+          color: 'rgba(0, 0, 0, 0.1)',
+          drawOnChartArea: true,
         },
         ticks: {
-          callback: (value) => `$${value.toLocaleString()}`,
-          stepSize: 0.1, // smaller step size for more detailed scale
-          maxTicksLimit: 20 // more ticks on the y-axis
+          callback: (value) => `$${value.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          })}`,
+          stepSize: 0.01, // Show cent-level changes
+          count: 30, // More tick marks
+          autoSkip: false
         }
       }
     },
@@ -157,6 +144,40 @@ const LineChart = ({ data, priceType, coin }) => {
       duration: 0 // disable animation for immediate updates
     }
   };
+
+  // Update chart data only when the last data point changes
+  const lastDataPoint = useMemo(() => {
+    if (!data || data.length === 0) return null;
+    return data[data.length - 1];
+  }, [data]);
+
+  useEffect(() => {
+    if (lastDataPoint) {
+      const currentValue = lastDataPoint[priceType];
+      // Calculate suitable min/max for y-axis based on current value
+      const range = currentValue * 0.001; // 0.1% range
+      const minY = currentValue - range;
+      const maxY = currentValue + range;
+
+      setChartData({
+        labels: data.map(entry => new Date(entry.timestamp).toLocaleTimeString()),
+        datasets: [{
+          label: `${coin}/${priceType.toUpperCase()}`,
+          data: data.map(entry => entry[priceType]),
+          fill: true,
+          backgroundColor: colors.bg,
+          borderColor: colors.border,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+        }]
+      });
+
+      // Dynamically update y-axis range
+      options.scales.y.min = minY;
+      options.scales.y.max = maxY;
+    }
+  }, [lastDataPoint, priceType, coin, colors.bg, colors.border, data]);
 
   return (
     <div style={{ 
