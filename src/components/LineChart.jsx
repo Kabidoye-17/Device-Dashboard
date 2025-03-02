@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -59,7 +59,8 @@ const LineChart = ({ data, priceType, coin }) => {
     }]
   });
 
-  const options = {
+  // Move options to useMemo to prevent recreation on every render
+  const options = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -143,7 +144,7 @@ const LineChart = ({ data, priceType, coin }) => {
     animation: {
       duration: 0 // disable animation for immediate updates
     }
-  };
+  }), []); // Empty dependency array as this configuration doesn't need to change
 
   // Update chart data only when the last data point changes
   const lastDataPoint = useMemo(() => {
@@ -177,7 +178,7 @@ const LineChart = ({ data, priceType, coin }) => {
       options.scales.y.min = minY;
       options.scales.y.max = maxY;
     }
-  }, [lastDataPoint, priceType, coin, colors.bg, colors.border, data]);
+  }, [lastDataPoint, priceType, coin, colors.bg, colors.border, data, options.scales.y]);
 
   return (
     <div style={{ 
