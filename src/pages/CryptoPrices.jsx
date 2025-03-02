@@ -57,8 +57,8 @@ function CryptoPrices() {
 
         // Update historical data
         setHistoricalData(prev => ({
-          BTC: [...prev.BTC.slice(-19), metricsData.BTC],
-          ETH: [...prev.ETH.slice(-19), metricsData.ETH]
+          BTC: [...prev.BTC.slice(1), metricsData.BTC], // Slide back the times
+          ETH: [...prev.ETH.slice(1), metricsData.ETH]  // Slide back the times
         }));
         
         setCryptoMetrics(metricsData);
@@ -104,6 +104,7 @@ function CryptoPrices() {
         {/* BTC Charts */}
         <div style={{ 
           display: 'flex', 
+          flexWrap: 'wrap', // Allow wrapping
           justifyContent: 'space-between', 
           gap: '20px'
         }}>
@@ -127,6 +128,7 @@ function CryptoPrices() {
         {/* ETH Charts */}
         <div style={{ 
           display: 'flex', 
+          flexWrap: 'wrap', // Allow wrapping
           justifyContent: 'space-between', 
           gap: '20px'
         }}>

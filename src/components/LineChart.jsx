@@ -107,7 +107,7 @@ const LineChart = ({ data, priceType, coin }) => {
       padding: '15px',
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
       height: '800px', // Increase height for better readability
-      width: '1000px', // Increase width for better readability
+      width: '3000px', // Increase width to accommodate at least 10 lines
       flex: '1',
       minWidth: '300px'
     }}>

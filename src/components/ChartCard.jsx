@@ -23,7 +23,7 @@ const ChartCard = ({ coin, priceType, data }) => {
       display: 'flex',
       flexDirection: 'column',
       flex: 1,
-      minWidth: '1000px' // Increase minWidth to accommodate longer chart
+      minWidth: '3000px' // Increase minWidth to accommodate longer chart
     }}>
       <div style={{ marginBottom: '15px' }}>
         <h2 style={{ 
