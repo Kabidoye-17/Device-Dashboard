@@ -93,6 +93,7 @@ function CryptoPrices() {
   return (
     <div>
       <h1>Crypto Metrics</h1>
+      <div>Last Updated: {formatTimestamp(cryptoMetrics.BTC.timestamp)}</div>
       
       {/* Charts Section */}
       <div style={{ 
@@ -149,21 +150,6 @@ function CryptoPrices() {
           />
         </div>
       </div>
-
-      {/* Existing Metrics Grid */}
-      <MetricsGrid>
-        <div><strong>BTC-USD</strong></div>
-        <div>Price: ${cryptoMetrics.BTC.price.toFixed(2)}</div>
-        <div>Bid: ${cryptoMetrics.BTC.bid.toFixed(2)}</div>
-        <div>Ask: ${cryptoMetrics.BTC.ask.toFixed(2)}</div>
-        <div>Last Updated: {formatTimestamp(cryptoMetrics.BTC.timestamp)}</div>
-
-        <div><strong>ETH-USD</strong></div>
-        <div>Price: ${cryptoMetrics.ETH.price.toFixed(2)}</div>
-        <div>Bid: ${cryptoMetrics.ETH.bid.toFixed(2)}</div>
-        <div>Ask: ${cryptoMetrics.ETH.ask.toFixed(2)}</div>
-        <div>Last Updated: {formatTimestamp(cryptoMetrics.ETH.timestamp)}</div>
-      </MetricsGrid>
     </div>
   );
 }
