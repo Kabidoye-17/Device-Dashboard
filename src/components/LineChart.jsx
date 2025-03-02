@@ -38,7 +38,7 @@ const LineChart = ({ data, priceType, coin }) => {
   const yAxisLimits = useMemo(() => {
     if (!lastDataPoint) return {};
     const currentValue = lastDataPoint[priceType];
-    const range = currentValue * 0.0002; // Tighter range (0.02% of price)
+    const range = currentValue * 0.001;
     return { min: currentValue - range, max: currentValue + range };
   }, [lastDataPoint, priceType]);
 
@@ -102,15 +102,14 @@ const LineChart = ({ data, priceType, coin }) => {
 
   return (
     <div style={{ 
-      background: 'white', 
-      borderRadius: '15px',
-      padding: '15px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      height: '800px', // Increase height for better readability
-      width: '800px', // Increase width to accommodate at least 10 lines
-      flex: '1',
-      minWidth: '300px'
-    }}>
+        background: 'white', 
+        borderRadius: '15px',
+        padding: '15px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        height: '800px',
+        width: '100%', // Changed from 800px to responsive width
+        minWidth: '300px' 
+      }}>
       <Line data={chartData} options={options} key={coin} />
     </div>
   );

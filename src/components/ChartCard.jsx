@@ -16,15 +16,16 @@ const ChartCard = ({ coin, priceType, data }) => {
 
   return (
     <div style={{
-      background: 'white',
-      borderRadius: '15px',
-      padding: '20px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      display: 'flex',
-      flexDirection: 'column',
-      flex: 1,
-      minWidth: '800px' // Increase minWidth to accommodate longer chart
-    }}>
+        background: 'white',
+        borderRadius: '15px',
+        padding: '20px',
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        display: 'flex',
+        flexDirection: 'column',
+        flex: 1,
+        minWidth: '300px', // Reduced from 800px
+        maxWidth: '100%' // Ensure it doesn't overflow
+      }}>
       <div style={{ marginBottom: '15px' }}>
         <h2 style={{ 
           margin: '0 0 10px 0',
