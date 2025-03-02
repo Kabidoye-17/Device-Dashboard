@@ -101,7 +101,15 @@ const LineChart = ({ data, priceType, coin }) => {
   }, [lastDataPoint, priceType, coin, colors, data]);
 
   return (
-    <div style={{ background: 'white', borderRadius: '15px', padding: '15px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', height: '350px', flex: '1', minWidth: '300px' }}>
+    <div style={{ 
+      background: 'white', 
+      borderRadius: '15px',
+      padding: '15px',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+      height: '800px', // Increase height for better readability
+      flex: '1',
+      minWidth: '300px'
+    }}>
       <Line data={chartData} options={options} key={coin} />
     </div>
   );

@@ -69,7 +69,7 @@ function CryptoPrices() {
     };
 
     fetchCryptoMetrics();
-    const interval = setInterval(fetchCryptoMetrics, 5000);
+    const interval = setInterval(fetchCryptoMetrics, 10000);
     return () => clearInterval(interval);
   }, []);
 
