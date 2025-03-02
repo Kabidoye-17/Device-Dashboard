@@ -55,10 +55,10 @@ function CryptoPrices() {
           });
         });
 
-        // Update historical data
+        // Update historical data, keeping only the last 10 entries
         setHistoricalData(prev => ({
-          BTC: [...prev.BTC.slice(1), metricsData.BTC], // Slide back the times
-          ETH: [...prev.ETH.slice(1), metricsData.ETH]  // Slide back the times
+          BTC: [...prev.BTC.slice(-9), metricsData.BTC], // Keep only the last 10 entries
+          ETH: [...prev.ETH.slice(-9), metricsData.ETH]  // Keep only the last 10 entries
         }));
         
         setCryptoMetrics(metricsData);

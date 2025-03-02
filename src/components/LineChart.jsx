@@ -63,7 +63,7 @@ const LineChart = ({ data, priceType, coin }) => {
         max: yAxisLimits.max,
         grid: { color: 'rgba(0, 0, 0, 0.1)' },
         ticks: {
-          stepSize: (yAxisLimits.max - yAxisLimits.min) / 6, // Smaller steps for visibility
+            stepSize: Math.max((yAxisLimits.max - yAxisLimits.min) / 10, 0.1),// Smaller steps for visibility
           callback: (value) => `$${value.toFixed(2)}` // Show 2 decimal places
         }
       }
@@ -107,7 +107,7 @@ const LineChart = ({ data, priceType, coin }) => {
       padding: '15px',
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
       height: '800px', // Increase height for better readability
-      width: '3000px', // Increase width to accommodate at least 10 lines
+      width: '800px', // Increase width to accommodate at least 10 lines
       flex: '1',
       minWidth: '300px'
     }}>
