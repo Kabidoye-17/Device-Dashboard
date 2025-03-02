@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -144,7 +144,7 @@ const LineChart = ({ data, priceType, coin }) => {
     animation: {
       duration: 0 // disable animation for immediate updates
     }
-  }), []); // Empty dependency array as this configuration doesn't need to change
+  }), [coin, priceType]); // Add missing dependencies
 
   // Update chart data only when the last data point changes
   const lastDataPoint = useMemo(() => {
