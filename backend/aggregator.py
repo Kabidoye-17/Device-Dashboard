@@ -44,7 +44,8 @@ class DatabaseAggregator:
         try:
             instance = session.query(model).filter_by(**filter_by).first()
             if instance:
-                return instance
+                return instance  
+            
             instance = model(**filter_by, **defaults)
             session.add(instance)
             session.commit()
@@ -55,7 +56,9 @@ class DatabaseAggregator:
             logger.error(f"Error in get_or_create for {model.__name__}: {str(e)}")
             raise
         finally:
+            session.expunge(instance)  # 🚀 Ensures instance is still usable
             self.cleanup_session(session)
+
             
     def store_metrics(self, metrics_data):
         session = self.get_session()
