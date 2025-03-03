@@ -44,6 +44,7 @@ def handle_metrics():
             if not metrics_data:
                 return jsonify({'error': 'No metrics data received'}), 400
             
+            logger.info(f"metrics_data in upload enpoint  ☀️: {metrics_data}")
             db_aggregator.store_metrics(metrics_data)
             return jsonify({'status': 'success', 'count': len(metrics_data)}), 200
     except Exception as e:

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 def get_utc_timestamp():
     """Return the current local time in ISO format with timezone offset."""
     
-    return  datetime.now(timezone.utc)
+    return  datetime.now(timezone.utc).isoformat()
 
 def get_utc_offset():
     """Return the current UTC offset in minutes."""
