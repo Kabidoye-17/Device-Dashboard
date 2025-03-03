@@ -64,6 +64,7 @@ class DatabaseAggregator:
         session = self.get_session()
         try:
             logger.info(f"Storing {len(metrics_data)} metrics")
+            logger.info(f"metrics_data in upload enpoint☀️ ☀️: {metrics_data}")
             for metric in metrics_data:
                 logger.debug(f"Processing metric: {metric}")
 
