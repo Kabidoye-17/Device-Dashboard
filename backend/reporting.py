@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from models.db_models import MetricMeasurement
@@ -47,6 +48,11 @@ class MetricsReporter:
                 .limit(limit)\
                 .all()
             metrics_list = [metric.to_dict() for metric in metrics]
+            for metric in metrics_list:
+                if isinstance(metric['timestamp_utc'], datetime):  # Ensure it's a datetime object
+                    metric['timestamp_utc'] = metric['timestamp_utc'].isoformat()
+                    logger.info(f"metric['timestamp_utc'] in get_latest_batch: {metric['timestamp_utc']}")
+                    
             logger.info(f"Retrieved {len(metrics_list)} metrics")
             return metrics_list
         except SQLAlchemyError as e:
