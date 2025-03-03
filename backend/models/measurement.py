@@ -10,7 +10,8 @@ class Measurement:
     value: float   
     type: str       
     unit: str       
-    timestamp: datetime  
+    timestamp_utc: datetime  
+    utc_offset: int
 
     def serialize(self) -> dict:
         """Serialize measurement for JSON transmission"""
@@ -21,5 +22,6 @@ class Measurement:
             'value': float(self.value),
             'type': str(self.type),
             'unit': str(self.unit),
-            'timestamp': self.timestamp,
+            'timestamp_utc': self.timestamp_utc,
+            'utc_offset': self.utc_offset
         }

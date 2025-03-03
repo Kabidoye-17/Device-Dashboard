@@ -43,7 +43,7 @@ class MetricsReporter:
         try:
             logger.debug(f"Fetching latest {limit} metrics")
             metrics = session.query(MetricMeasurement)\
-                .order_by(MetricMeasurement.timestamp.desc())\
+                .order_by(MetricMeasurement.id.desc())\
                 .limit(limit)\
                 .all()
             metrics_list = [metric.to_dict() for metric in metrics]

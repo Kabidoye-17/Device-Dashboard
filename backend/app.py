@@ -1,4 +1,3 @@
-from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from utils.logger import get_logger, setup_logger
@@ -6,7 +5,6 @@ import traceback
 from aggregator import DatabaseAggregator
 from config.config import load_config
 from reporting import MetricsReporter
-from dateutil import parser
 
 # Initialize application with config
 app = Flask(__name__)
@@ -62,13 +60,6 @@ def get_latest_batch():
         # Verify data before sending
         if not metrics:
             return jsonify([]), 200
-        
-        for metric in metrics:
-            if 'timestamp' in metric and isinstance(metric['timestamp'], str):
-                # Parse the string and reformat it exactly as you want
-                dt = parser.parse(metric['timestamp'])
-                metric['timestamp'] = dt.isoformat() 
-        
         
         return jsonify(metrics), 200
     except Exception as e:

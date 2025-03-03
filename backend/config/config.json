@@ -3,7 +3,7 @@
         "username": "Kabidoye17",
         "password": "Metricsdbpassword",
         "host": "Kabidoye17.mysql.pythonanywhere-services.com",
-        "name": "Kabidoye17$MetricDB"
+        "name": "Kabidoye17$Metrics"
     },
     "logging": {
         "console_output": {

@@ -101,7 +101,8 @@ class DatabaseAggregator:
                     value=metric_value,
                     type_id=metric_type.id,
                     unit_id=unit.id,
-                    timestamp=metric.get("timestamp")
+                    timestamp_utc=metric.get("timestamp_utc"),
+                    utc_offset=metric.get("utc_offset")
                 )
                 session.add(measurement)
 

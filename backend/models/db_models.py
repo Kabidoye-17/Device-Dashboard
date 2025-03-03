@@ -39,7 +39,8 @@ class MetricMeasurement(Base):
     value = Column(Float, nullable=False)
     type_id = Column(Integer, ForeignKey('metric_types.id'), nullable=False, index=True)
     unit_id = Column(Integer, ForeignKey('units.id'), nullable=False, index=True)
-    timestamp = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    timestamp_utc = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    utc_offset = Column(Integer, nullable=False)    
 
     type = relationship("MetricType", back_populates="metric_measurements")
     unit = relationship("Unit", back_populates="metric_measurements")
@@ -55,5 +56,6 @@ class MetricMeasurement(Base):
             'value': self.value,
             'type': self.type.name,
             'unit': self.unit.unit_name,
-            'timestamp': self.timestamp,
+            'timestamp_utc': self.timestamp_utc,
+            'utc_offset': self.utc_offset
         }

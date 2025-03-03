@@ -1,9 +1,9 @@
 import time
 import threading
 import requests
-import json
 from collections import deque
 from typing import Dict, Any, List
+from utils.timestamp import get_utc_timestamp, get_utc_offset
 from utils.logger import get_logger
 from collectors.collector_registry import CollectorRegistry
 from collectors.system_collector import SystemCollector
@@ -70,7 +70,8 @@ class UploaderQueue:
                                 value=float(metric[field]),
                                 type=collector_type,
                                 unit=rule.unit,
-                                timestamp=metric['timestamp'],
+                                timestamp_utc=get_utc_timestamp(),
+                                utc_offset=get_utc_offset(),
                             )
                             formatted_metrics.append(measurement.serialize())
                         except Exception as e:

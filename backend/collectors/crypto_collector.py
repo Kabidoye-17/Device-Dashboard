@@ -1,5 +1,4 @@
 import requests
-from utils.timestamp import get_local_time_with_offset
 from utils.logger import get_logger
 from collectors.base_collector import BaseCollector
 from config.config import load_config
@@ -37,8 +36,7 @@ class CryptoCollector(BaseCollector):
                 'currency_pair': pair,
                 'price': round(float(data['price']), 2),
                 'bid': round(float(data['bid']), 2),
-                'ask': round(float(data['ask']), 2),
-                'timestamp': get_local_time_with_offset(),
+                'ask': round(float(data['ask']), 2)
             }
         except Exception as e:
             logger.error(f"Error fetching {pair}: {str(e)}")
