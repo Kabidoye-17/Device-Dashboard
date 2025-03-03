@@ -90,6 +90,11 @@ class DatabaseAggregator:
                     defaults={"device_name": str(metric.get("device_name", "unknown"))}
                 )
 
+                device = session.merge(device)  
+                metric_type = session.merge(metric_type)  
+                unit = session.merge(unit)  
+
+
                 measurement = MetricMeasurement(
                     device_id=device.device_id,  
                     name=str(metric["name"]),
