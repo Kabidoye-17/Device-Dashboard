@@ -47,7 +47,6 @@ class DatabaseConfig:
 class MetricConfig:
     name: str
     unit: str
-    source: str
 
 @dataclass
 class SystemMetricsConfig:
@@ -81,6 +80,25 @@ class ServerConfig:
     url: str
     timeout: int
     collection_interval: int
+    upload_interval: int
+    max_queue_size: int
+    api_metrics_endpoint: str
+
+@dataclass
+class CryptoCollectorConfig:
+    currency_pairs: list
+    base_url: str
+    collector: str
+    device_id: str
+    ticker_endpoint: str
+    device_name: str
+
+@dataclass
+class CollectorTypesConfig:
+    system: str
+    crypto: str
+
+
 
 @dataclass
 class Config:
@@ -90,6 +108,8 @@ class Config:
     logging: LoggingConfig
     transform_rules: TransformRulesConfig
     server: ServerConfig
+    crypto_collector: CryptoCollectorConfig
+    collector_types: CollectorTypesConfig
 
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
@@ -113,7 +133,9 @@ def load_config():
                 file_output=FileLoggingConfig(**config_data['logging']['file_output'])
             ),
             transform_rules=TransformRulesConfig(**config_data['transform_rules']),
-            server=ServerConfig(**config_data['server'])
+            server=ServerConfig(**config_data['server']),
+            crypto_collector=CryptoCollectorConfig(**config_data['crypto_collector']),
+            collector_types=CollectorTypesConfig(**config_data['collector_types']),
         )
     except Exception as e:
         logging.error(f"Failed to load configuration: {str(e)}")

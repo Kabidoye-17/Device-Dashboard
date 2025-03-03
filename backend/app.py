@@ -37,31 +37,25 @@ except Exception as e:
     logger.critical(f"Failed to initialize Metrics reporter: {str(e)}")
     raise
 
-
-# Update route from /api/metrics/metrics to /api/metrics
-@app.route('/api/metrics', methods=['POST', 'GET'])
+@app.route('/api/metrics/upload-metrics', methods=['POST'])
 def handle_metrics():
     logger.debug(f"Handling {request.method} request to /api/metrics")
     try:
-        if request.method == 'POST':
             metrics_data = request.json
             if not metrics_data:
                 return jsonify({'error': 'No metrics data received'}), 400
-
+            
             db_aggregator.store_metrics(metrics_data)
             return jsonify({'status': 'success', 'count': len(metrics_data)}), 200
-        else:  # GET request
-            metrics = db_aggregator.get_latest_metrics(limit=50)  # Add limit parameter
-            return jsonify(metrics), 200
     except Exception as e:
         logger.error(f"Error in handle_metrics: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/metrics/latest-batch', methods=['GET'])
+@app.route('/api/metrics/get-latest-metrics', methods=['GET'])
 def get_latest_batch():
-    logger.debug("Handling GET request to /api/metrics/latest-batch")
+    logger.debug("Handling GET request to get-latest-metrics")
     try:
-        metrics = metrics_reporter.get_latest_timestamp_metrics()
+        metrics = metrics_reporter.get_latest_metrics(50)
         
         # Verify data before sending
         if not metrics:

@@ -1,57 +1,61 @@
-from sqlalchemy import create_engine, desc, func
-from datetime import datetime
+from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
 from models.db_models import MetricMeasurement
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 from utils.logger import get_logger
+import sqlalchemy as sa
 
 logger = get_logger(__name__)
 
 class MetricsReporter:
     def __init__(self, connection_string):
-        self.engine = create_engine(connection_string)
-        self.Session = sessionmaker(bind=self.engine)
-
-    def get_latest_timestamp_metrics(self):
-        """Get the most recent metrics for each unique metric name"""
-        session = self.Session()
         try:
-            logger.debug("Fetching latest timestamp metrics")
-            
-            # Subquery to get the max timestamp for each metric name
-            latest_timestamps = session.query(
-                MetricMeasurement.name,
-                func.max(MetricMeasurement.timestamp).label('max_timestamp')
-            ).group_by(MetricMeasurement.name).subquery()
+            logger.info("Initializing database connection...")
+            self.engine = create_engine(connection_string, pool_recycle=280)  # Add pool_recycle for MySQL
+            self.Session = scoped_session(sessionmaker(bind=self.engine))
+            logger.info("Database connection established successfully")
+        except SQLAlchemyError as e:
+            logger.error(f"Failed to initialize database: {str(e)}")
+            raise
 
-            # Join with original table to get full records
-            latest_metrics = session.query(MetricMeasurement).join(
-                latest_timestamps,
-                (MetricMeasurement.name == latest_timestamps.c.name) &
-                (MetricMeasurement.timestamp == latest_timestamps.c.max_timestamp)
-            ).all()
+    def get_session(self):
+        return self.Session()
 
-            result = []
-            for metric in latest_metrics:
-                try:
-                    metric_dict = {
-                        'name': metric.name,
-                        'value': float(metric.value),
-                        'timestamp': metric.timestamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-                        'type': metric.type.name if metric.type else 'system'
-                    }
-                    result.append(metric_dict)
-                except Exception as e:
-                    logger.error(f"Error processing metric {metric.name}: {str(e)}")
-                    continue
-
-            logger.debug(f"Returning {len(result)} metrics: {result}")
-            return result
-
+    def cleanup_session(self, session):
+        try:
+            session.close()
+            self.Session.remove()
         except Exception as e:
-            logger.error(f"Error getting latest timestamp metrics: {str(e)}")
+            logger.error(f"Error cleaning up session: {str(e)}")
+
+    def verify_connection(self):
+        """Verify database connection is working"""
+        try:
+            with self.engine.connect() as conn:
+                conn.execute(sa.text('SELECT 1'))
+            return True
+        except SQLAlchemyError as e:
+            logger.error(f"Database connection failed: {str(e)}")
+            return False
+
+    def get_latest_metrics(self, limit=50):
+        session = self.get_session()
+        try:
+            logger.debug(f"Fetching latest {limit} metrics")
+            metrics = session.query(MetricMeasurement)\
+                .order_by(MetricMeasurement.timestamp.desc())\
+                .limit(limit)\
+                .all()
+            metrics_list = [metric.to_dict() for metric in metrics]
+            logger.info(f"Retrieved {len(metrics_list)} metrics")
+            return metrics_list
+        except SQLAlchemyError as e:
+            session.rollback()
+            logger.error(f"Error fetching metrics: {str(e)}")
             raise
         finally:
-            session.close()
+            self.cleanup_session(session)
+
 
     def __del__(self):
         self.session.close()

@@ -1,5 +1,5 @@
 from datetime import datetime
 
-def get_timestamp():
-    """Return current timestamp in ISO format."""
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+def get_local_time_with_offset():
+    """Return the current local time in ISO format with timezone offset."""
+    return datetime.now().astimezone().isoformat() 

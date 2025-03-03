@@ -3,7 +3,7 @@
         "username": "Kabidoye17",
         "password": "Metricsdbpassword",
         "host": "Kabidoye17.mysql.pythonanywhere-services.com",
-        "name": "Kabidoye17$default"
+        "name": "Kabidoye17$MetricDB"
     },
     "logging": {
         "console_output": {
@@ -25,19 +25,34 @@
     },
     "transform_rules": {
         "system": {
-            "cpu_load": {"name": "CPU Load", "unit": "%", "source": "device1"},
-            "ram_usage": {"name": "RAM Usage", "unit": "%", "source": "device1"},
-            "network_sent": {"name": "Network Sent", "unit": "MB", "source": "device1"}
+            "cpu_load": {"name": "CPU Load", "unit": "%"},
+            "ram_usage": {"name": "RAM Usage", "unit": "%"},
+            "network_sent": {"name": "Network Sent", "unit": "MB"}
         },
         "crypto": {
-            "price": {"name": "{pair} Price", "unit": "USD", "source": "coinbase"},
-            "bid": {"name": "{pair} Bid", "unit": "USD", "source": "coinbase"},
-            "ask": {"name": "{pair} Ask", "unit": "USD", "source": "coinbase"}
+            "price": {"name": "{pair} Price", "unit": "USD"},
+            "bid": {"name": "{pair} Bid", "unit": "USD"},
+            "ask": {"name": "{pair} Ask", "unit": "USD"}
         }
+    },
+    "crypto_collector": {
+        "currency_pairs": ["BTC-USD", "ETH-USD"],
+        "base_url": "https://api.exchange.coinbase.com/products",
+        "collector": "crypto",
+        "device_id": "api.exchange.coinbase.com",
+        "ticker_endpoint": "ticker",
+        "device_name": "Coinbase Collector"
+    },
+    "collector_types":{
+        "system": "system",
+        "crypto": "crypto"
     },
     "server": {
         "url": "http://Kabidoye17.pythonanywhere.com",
         "timeout": 5,
-        "collection_interval": 10
+        "collection_interval": 5,
+        "upload_interval": 30,
+        "max_queue_size": 100,
+        "api_metrics_endpoint": "api/metrics/upload-metrics"
     }
 }

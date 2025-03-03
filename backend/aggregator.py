@@ -1,8 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SQLAlchemyError
-from models.db_models import Base, MetricType, Unit, Source, MetricMeasurement
-from datetime import datetime, timezone
+from models.db_models import Base, Device, MetricType, Unit, MetricMeasurement
 from utils.logger import get_logger
 import sqlalchemy as sa
 
@@ -40,16 +39,16 @@ class DatabaseAggregator:
             logger.error(f"Database connection failed: {str(e)}")
             return False
 
-    def get_or_create(self, model, **kwargs):
+    def get_or_create(self, model, filter_by, defaults={}):
         session = self.get_session()
         try:
-            instance = session.query(model).filter_by(**kwargs).first()
+            instance = session.query(model).filter_by(**filter_by).first()
             if instance:
                 return instance
-            instance = model(**kwargs)
+            instance = model(**filter_by, **defaults)
             session.add(instance)
             session.commit()
-            logger.debug(f"Created new {model.__name__}: {kwargs}")
+            logger.debug(f"Created new {model.__name__}: {filter_by} {defaults}")
             return instance
         except SQLAlchemyError as e:
             session.rollback()
@@ -57,73 +56,51 @@ class DatabaseAggregator:
             raise
         finally:
             self.cleanup_session(session)
-
-    def validate_timestamp(self, timestamp_value):
-        """Validate and convert timestamp to datetime object"""
-        try:
-            if isinstance(timestamp_value, (int, float)):
-                return datetime.fromtimestamp(timestamp_value, tz=timezone.utc)
-            elif isinstance(timestamp_value, str):
-                try:
-                    # Try parsing as float first
-                    return datetime.fromtimestamp(float(timestamp_value), tz=timezone.utc)
-                except ValueError:
-                    # Try parsing as ISO format
-                    return datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
-            elif timestamp_value is None:
-                return datetime.now(timezone.utc)
-            else:
-                raise ValueError(f"Invalid timestamp format: {timestamp_value}")
-        except Exception as e:
-            logger.warning(f"Invalid timestamp {timestamp_value}, using current time. Error: {str(e)}")
-            return datetime.now(timezone.utc)
-
+            
     def store_metrics(self, metrics_data):
         session = self.get_session()
         try:
             logger.info(f"Storing {len(metrics_data)} metrics")
             for metric in metrics_data:
                 logger.debug(f"Processing metric: {metric}")
-                
-                # Ensure metric data is properly formatted
+
+                # Ensure metric value is valid
                 try:
                     metric_value = float(metric['value'])
                 except (ValueError, TypeError):
                     logger.warning(f"Invalid metric value: {metric.get('value')}. Skipping.")
                     continue
 
-                timestamp = self.validate_timestamp(metric.get('timestamp'))
-
-                m_type = self.get_or_create(
-                    MetricType,
-                    name=str(metric.get('type', 'system'))
+                metric_type = self.get_or_create(
+                    MetricType, 
+                    filter_by={"name": str(metric.get("type", "system"))}
                 )
 
                 unit = self.get_or_create(
-                    Unit,
-                    unit_name=str(metric.get('unit', 'unknown'))
+                    Unit, 
+                    filter_by={"unit_name": str(metric.get("unit", "unknown"))}
                 )
 
-                source = self.get_or_create(
-                    Source,
-                    name=str(metric.get('source', 'unknown'))
+                device = self.get_or_create(
+                    Device, 
+                    filter_by={"device_id": str(metric.get("device_id", "unknown"))},
+                    defaults={"device_name": str(metric.get("device_name", "unknown"))}
                 )
 
                 measurement = MetricMeasurement(
-                    name=str(metric['name']),
+                    device_id=device.device_id,  
+                    name=str(metric["name"]),
                     value=metric_value,
-                    type_id=m_type.id,
+                    type_id=metric_type.id,
                     unit_id=unit.id,
-                    source_id=source.id,
-                    timestamp=timestamp,
-                    device_id=str(metric.get('device_id', None))
+                    timestamp=metric.get("timestamp")
                 )
                 session.add(measurement)
-            
+
             session.commit()
             logger.info("Successfully stored all metrics")
             return True
-            
+
         except Exception as e:
             session.rollback()
             logger.error(f"Error storing metrics: {str(e)}")
@@ -131,20 +108,5 @@ class DatabaseAggregator:
         finally:
             self.cleanup_session(session)
 
-    def get_latest_metrics(self, limit=50):
-        session = self.get_session()
-        try:
-            logger.debug(f"Fetching latest {limit} metrics")
-            metrics = session.query(MetricMeasurement)\
-                .order_by(MetricMeasurement.timestamp.desc())\
-                .limit(limit)\
-                .all()
-            metrics_list = [metric.to_dict() for metric in metrics]
-            logger.info(f"Retrieved {len(metrics_list)} metrics")
-            return metrics_list
-        except SQLAlchemyError as e:
-            session.rollback()
-            logger.error(f"Error fetching metrics: {str(e)}")
-            raise
-        finally:
-            self.cleanup_session(session)
+
+    
