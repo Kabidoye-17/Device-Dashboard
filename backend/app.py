@@ -1,4 +1,5 @@
 from datetime import datetime
+from json import JSONEncoder
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from utils.logger import get_logger, setup_logger
@@ -10,6 +11,15 @@ from reporting import MetricsReporter
 # Initialize application with config
 app = Flask(__name__)
 CORS(app)
+
+class CustomJSONEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(obj)
+
+# Then configure Flask to use it
+app.json_encoder = CustomJSONEncoder
 
 # Load and apply configuration
 config = load_config()
@@ -49,20 +59,19 @@ def handle_metrics():
             return jsonify({'status': 'success', 'count': len(metrics_data)}), 200
     except Exception as e:
         logger.error(f"Error in handle_metrics: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/metrics/get-latest-metrics', methods=['GET'])
 def get_latest_batch():
     logger.debug("Handling GET request to get-latest-metrics")
     try:
         metrics = metrics_reporter.get_latest_metrics(50)
+        logger.info(f"Storing {len(metrics)} metrics")
         
         # Verify data before sending
         if not metrics:
             return jsonify([]), 200
-            
-        # Log the response for debugging
-        logger.debug(f"Sending metrics response: {metrics}")
+        
         
         return jsonify(metrics), 200
     except Exception as e:

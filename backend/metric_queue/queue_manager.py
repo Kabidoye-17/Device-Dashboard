@@ -108,7 +108,7 @@ class UploaderQueue:
                 logger.info("No metrics to upload.")
             else:
                 try:
-                    data_to_upload = list(self.queue)
+                    data_to_upload = list(self.queue)[:9]
 
                     url = f"{self.server_url}/{self.api_metrics_endpoint}"
                     logger.debug(f"Uploading to {url} with {len(data_to_upload)} metrics")
