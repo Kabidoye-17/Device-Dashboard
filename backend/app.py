@@ -56,6 +56,7 @@ def get_latest_batch():
     logger.debug("Handling GET request to get-latest-metrics")
     try:
         metrics = metrics_reporter.get_latest_metrics(50)
+        logger.info(f"metrics_data in get enpoint  ☀️☀️☀️: {metrics}")
         logger.info(f"Storing {len(metrics)} metrics")
         
         # Verify data before sending
