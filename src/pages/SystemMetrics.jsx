@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiUrl } from '../config';
-import { ErrorContainer, RetryButton, MetricsGrid } from '../styles/StyledComponents';
+import { ErrorContainer, RetryButton } from '../styles/StyledComponents';
 
 function SystemMetrics() {
   const [metrics, setMetrics] = useState([]);
