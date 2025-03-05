@@ -81,25 +81,18 @@ function SystemMetrics() {
 
         console.log('Processed metrics:', metricsData);
         
-        // Update historical data, adding the new data at the top and removing the oldest entry if over 10
-        setHistoricalData(prev => {
-          const newCPUData = [{ value: metricsData.cpu_load, timestamp: metricsData.timestamp }, ...prev.cpu_load].slice(0, 10);
-          const newRAMData = [{ value: metricsData.ram_usage, timestamp: metricsData.timestamp }, ...prev.ram_usage].slice(0, 10);
-          const newNetworkData = [{ value: metricsData.network_sent, timestamp: metricsData.timestamp }, ...prev.network_sent].slice(0, 10);
+         // Update historical data, adding the new data at the top and removing the oldest entry if over 10
+         const newCPUData = [{ value: metricsData.cpu_load, timestamp: metricsData.timestamp }];
+         const newRAMData = [{ value: metricsData.ram_usage, timestamp: metricsData.timestamp }];
+         const newNetworkData = [{ value: metricsData.network_sent, timestamp: metricsData.timestamp }];
+         
+         setHistoricalData({
+           cpuData: newCPUData,
+           ramData: newRAMData,
+           networkData: newNetworkData
+         });
 
-          console.log('Updated Historical Data:', {
-            cpu_load: newCPUData,
-            ram_usage: newRAMData,
-            network_sent: newNetworkData
-          });
-
-          return {
-            cpu_load: newCPUData,
-            ram_usage: newRAMData,
-            network_sent: newNetworkData
-          };
-        });
-
+         
         setMetrics(metricsData);
       } catch (error) {
         console.error('Fetch error:', error);
