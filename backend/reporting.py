@@ -59,7 +59,7 @@ class MetricsReporter:
                     value=metric.value,
                     type=metric.type.name,
                     unit=metric.unit.unit_name,
-                    timestamp_utc=metric.timestamp_utc,
+                    timestamp_utc=(metric.timestamp_utc).isoformat(),
                     utc_offset=metric.utc_offset
                 )
                 measurements.append(measurement.serialize())  
