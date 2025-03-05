@@ -22,6 +22,6 @@ class Measurement:
             'value': float(self.value),
             'type': str(self.type),
             'unit': str(self.unit),
-            'timestamp_utc': self.timestamp_utc,
+            'timestamp_utc': self.timestamp_utc.isoformat(),
             'utc_offset': self.utc_offset
         }
