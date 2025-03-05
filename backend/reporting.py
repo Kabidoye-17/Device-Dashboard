@@ -4,7 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from models.measurement import Measurement
 from models.db_models import MetricMeasurement
 from models.db_models import Device
-from sqlalchemy.orm import sessionmaker, scoped_session,joinedload
+from sqlalchemy.orm import sessionmaker, scoped_session, joinedload
 from utils.logger import get_logger
 import sqlalchemy as sa
 
@@ -14,7 +14,7 @@ class MetricsReporter:
     def __init__(self, connection_string):
         try:
             logger.info("Initializing database connection...")
-            self.engine = create_engine(connection_string, pool_recycle=280)  # Add pool_recycle for MySQL
+            self.engine = create_engine(connection_string, pool_recycle=280, pool_size=5, max_overflow=10)  # Add pool_recycle and pool_size
             self.Session = scoped_session(sessionmaker(bind=self.engine))
             logger.info("Database connection established successfully")
         except SQLAlchemyError as e:
@@ -80,6 +80,5 @@ class MetricsReporter:
         finally:
             self.cleanup_session(session)
 
-
     def __del__(self):
-        self.session.close()
+        self.Session.remove()
