@@ -17,7 +17,8 @@ class CachedData:
         self.lock.acquire()
         return self 
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit method properly implemented with required parameters"""
         assert(self.lock.locked())
         self.lock.release()
 
