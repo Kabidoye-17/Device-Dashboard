@@ -71,7 +71,7 @@ def get_latest_batch():
                     return jsonify(metrics_cache.get_data()), 200
 
                 logger.info("Fetching new metrics data")
-                metrics = metrics_reporter.get_latest_metrics(50)
+                metrics = metrics_reporter.get_latest_metrics()
                 if not metrics:
                     return jsonify([]), 200
 

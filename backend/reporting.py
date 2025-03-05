@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from models.measurement import Measurement
@@ -40,31 +41,36 @@ class MetricsReporter:
             logger.error(f"Database connection failed: {str(e)}")
             return False
 
-    def get_latest_metrics(self, limit=50):
+    def get_latest_metrics(self):
         session = self.get_session()
         try:
-            logger.debug(f"Fetching latest {limit} metrics")
-            metrics = session.query(MetricMeasurement) \
-            .options(joinedload(MetricMeasurement.device).joinedload(Device.details)) \
-            .order_by(MetricMeasurement.id.desc()) \
-            .limit(limit) \
-            .all()
-       
-            measurements = []
-            for metric in metrics:
-                measurement = Measurement(
+            ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
+
+            logger.debug("Fetching metrics from the last 10 minutes")
+
+            metrics = (
+                session.query(MetricMeasurement)
+                .options(joinedload(MetricMeasurement.device).joinedload(Device.details))
+                .filter(MetricMeasurement.timestamp_utc >= ten_minutes_ago)  # Filtering by time
+                .order_by(MetricMeasurement.timestamp_utc.desc())  # Most recent first
+                .all()
+            )
+
+            measurements = [
+                Measurement(
                     device_id=metric.device.device_id,
                     device_name=metric.device.details.device_name,
                     name=metric.name,
                     value=metric.value,
                     type=metric.type.name,
                     unit=metric.unit.unit_name,
-                    timestamp_utc=(metric.timestamp_utc).isoformat(),
-                    utc_offset=metric.utc_offset
-                )
-                measurements.append(measurement.serialize())  
+                    timestamp_utc=metric.timestamp_utc.isoformat(),
+                    utc_offset=metric.utc_offset,
+                ).serialize()
+                for metric in metrics
+            ]
 
-            logger.info(f"Retrieved {len(measurements)} metrics")
+            logger.info(f"Retrieved {len(measurements)} metrics from the last 10 minutes")
             return measurements
 
         except SQLAlchemyError as e:

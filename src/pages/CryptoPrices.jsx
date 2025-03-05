@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { apiUrl } from '../config';
-import ChartCard from '../components/ChartCard';
 import { ErrorContainer, RetryButton } from '../styles/StyledComponents';
+import { Line } from 'react-chartjs-2';
 
 function CryptoPrices() {
   const [cryptoMetrics, setCryptoMetrics] = useState({
@@ -83,28 +83,66 @@ function CryptoPrices() {
     ETH: historicalData.ETH
   }), [historicalData.BTC, historicalData.ETH]);
 
-  const renderHistoricalTable = (data, coin) => (
-    <table>
-      <thead>
-        <tr>
-          <th>Timestamp</th>
-          <th>Price</th>
-          <th>Bid</th>
-          <th>Ask</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((entry, index) => (
-          <tr key={`${coin}-${index}`}>
-            <td>{formatTimestamp(entry.timestamp)}</td>
-            <td>{entry.price}</td>
-            <td>{entry.bid}</td>
-            <td>{entry.ask}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
+  const renderChart = (data, coin) => {
+    const chartData = {
+      labels: data.map(entry => formatTimestamp(entry.timestamp)),
+      datasets: [
+        {
+          label: 'Price',
+          data: data.map(entry => entry.price),
+          borderColor: 'blue',
+          fill: false
+        },
+        {
+          label: 'Ask',
+          data: data.map(entry => entry.ask),
+          borderColor: 'red',
+          fill: false
+        },
+        {
+          label: 'Bid',
+          data: data.map(entry => entry.bid),
+          borderColor: 'green',
+          fill: false
+        }
+      ]
+    };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { font: { size: 14 } } },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            label: (context) => `${coin} ${context.dataset.label}: $${context.raw.toFixed(2)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: false // Hide x-axis labels
+        },
+        y: {
+          grid: { color: 'rgba(0, 0, 0, 0.1)' },
+          ticks: {
+            callback: (value) => `$${value.toFixed(2)}`
+          }
+        }
+      },
+      elements: { line: { tension: 0.3 }, point: { radius: 0, hoverRadius: 5 } },
+      animation: { duration: 0 }
+    };
+
+    return (
+      <div>
+        <h2>{coin} Chart</h2>
+        <Line data={chartData} options={options} />
+      </div>
+    );
+  };
 
   if (error) {
     return (
@@ -129,65 +167,12 @@ function CryptoPrices() {
         gap: '20px',
         marginBottom: '30px'
       }}>
-        {/* BTC Charts */}
-        <div style={{ 
-          display: 'flex', 
-          flexWrap: 'wrap', // Allow wrapping
-          justifyContent: 'space-between', 
-          gap: '20px'
-        }}>
-          <ChartCard 
-            coin="BTC"
-            priceType="price"
-            data={memoizedHistoricalData.BTC}
-          />
-          <ChartCard 
-            coin="BTC"
-            priceType="ask"
-            data={memoizedHistoricalData.BTC}
-          />
-          <ChartCard 
-            coin="BTC"
-            priceType="bid"
-            data={memoizedHistoricalData.BTC}
-          />
-        </div>
+        {/* BTC Chart */}
+        {renderChart(memoizedHistoricalData.BTC, 'BTC')}
 
-        {/* BTC Historical Data Table */}
-        <div>
-          <h2>BTC Historical Data</h2>
-          {renderHistoricalTable(memoizedHistoricalData.BTC, 'BTC')}
-        </div>
+        {/* ETH Chart */}
+        {renderChart(memoizedHistoricalData.ETH, 'ETH')}
 
-        {/* ETH Charts */}
-        <div style={{ 
-          display: 'flex', 
-          flexWrap: 'wrap', // Allow wrapping
-          justifyContent: 'space-between', 
-          gap: '20px'
-        }}>
-          <ChartCard 
-            coin="ETH"
-            priceType="price"
-            data={memoizedHistoricalData.ETH}
-          />
-          <ChartCard 
-            coin="ETH"
-            priceType="ask"
-            data={memoizedHistoricalData.ETH}
-          />
-          <ChartCard 
-            coin="ETH"
-            priceType="bid"
-            data={memoizedHistoricalData.ETH}
-          />
-        </div>
-
-        {/* ETH Historical Data Table */}
-        <div>
-          <h2>ETH Historical Data</h2>
-          {renderHistoricalTable(memoizedHistoricalData.ETH, 'ETH')}
-        </div>
       </div>
     </div>
   );
