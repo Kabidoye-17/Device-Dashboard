@@ -58,8 +58,8 @@ function CryptoPrices() {
 
         // Initialize historical data with the latest fetched metrics and add to the history
         setHistoricalData(prev => {
-          const newBTCData = [...prev.BTC, { ...metricsData.BTC, timestamp: metricsData.BTC.timestamp }].slice(-10);
-          const newETHData = [...prev.ETH, { ...metricsData.ETH, timestamp: metricsData.ETH.timestamp }].slice(-10);
+          const newBTCData = [{ ...metricsData.BTC, timestamp: metricsData.BTC.timestamp }, ...prev.BTC].slice(0, 10);
+          const newETHData = [{ ...metricsData.ETH, timestamp: metricsData.ETH.timestamp }, ...prev.ETH].slice(0, 10);
           console.log('Updated Historical Data BTC:', newBTCData); // Log historical data for BTC
           console.log('Updated Historical Data ETH:', newETHData); // Log historical data for ETH
           return {

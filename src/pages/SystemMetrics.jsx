@@ -9,12 +9,16 @@ function SystemMetrics() {
     network_sent: 0,
     timestamp: '-'
   });
+  const [historicalData, setHistoricalData] = useState({
+    cpu_load: [],
+    ram_usage: [],
+    network_sent: []
+  });
   const [error, setError] = useState(null);
 
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'N/A';
     try {
-      // Handle both Unix timestamps and ISO strings
       const date = typeof timestamp === 'number' 
         ? new Date(timestamp * 1000)  // Unix timestamp
         : new Date(timestamp);        // ISO string
@@ -76,6 +80,26 @@ function SystemMetrics() {
         });
 
         console.log('Processed metrics:', metricsData);
+        
+        // Update historical data, adding the new data at the top and removing the oldest entry if over 10
+        setHistoricalData(prev => {
+          const newCPUData = [{ value: metricsData.cpu_load, timestamp: metricsData.timestamp }, ...prev.cpu_load].slice(0, 10);
+          const newRAMData = [{ value: metricsData.ram_usage, timestamp: metricsData.timestamp }, ...prev.ram_usage].slice(0, 10);
+          const newNetworkData = [{ value: metricsData.network_sent, timestamp: metricsData.timestamp }, ...prev.network_sent].slice(0, 10);
+
+          console.log('Updated Historical Data:', {
+            cpu_load: newCPUData,
+            ram_usage: newRAMData,
+            network_sent: newNetworkData
+          });
+
+          return {
+            cpu_load: newCPUData,
+            ram_usage: newRAMData,
+            network_sent: newNetworkData
+          };
+        });
+
         setMetrics(metricsData);
       } catch (error) {
         console.error('Fetch error:', error);
@@ -102,6 +126,50 @@ function SystemMetrics() {
   return (
     <div>
       <h1>System Metrics</h1>
+      {/* Display Current Metrics */}
+      <div>
+        <h1>CPU Load: {Number.isFinite(metrics.cpu_load) ? metrics.cpu_load.toFixed(2) : '0.00'}%</h1>
+        <h1>RAM Usage: {Number.isFinite(metrics.ram_usage) ? metrics.ram_usage.toFixed(2) : '0.00'}%</h1>
+        <h1>Network Sent: {Number.isFinite(metrics.network_sent) ? metrics.network_sent.toFixed(2) : '0.00'} MB</h1>
+        <h1>Last Updated: {formatTimestamp(metrics.timestamp)}</h1>
+      </div>
+
+      {/* Display Historical Data */}
+      <div>
+        <h2>Historical Data</h2>
+        <div>
+          <h3>CPU Load</h3>
+          <ul>
+            {historicalData.cpu_load.map((entry, index) => (
+              <li key={index}>
+                {formatTimestamp(entry.timestamp)}: {entry.value.toFixed(2)}%
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3>RAM Usage</h3>
+          <ul>
+            {historicalData.ram_usage.map((entry, index) => (
+              <li key={index}>
+                {formatTimestamp(entry.timestamp)}: {entry.value.toFixed(2)}%
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3>Network Sent</h3>
+          <ul>
+            {historicalData.network_sent.map((entry, index) => (
+              <li key={index}>
+                {formatTimestamp(entry.timestamp)}: {entry.value.toFixed(2)} MB
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Metrics Grid */}
       <MetricsGrid>
         <div>CPU Load: {Number.isFinite(metrics.cpu_load) ? metrics.cpu_load.toFixed(2) : '0.00'}%</div>
         <div>RAM Usage: {Number.isFinite(metrics.ram_usage) ? metrics.ram_usage.toFixed(2) : '0.00'}%</div>
