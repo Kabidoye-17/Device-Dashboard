@@ -5,7 +5,7 @@ from threading import Lock
 class CachedData:
     _logger = logging.getLogger(__name__)
 
-    def __init__(self, cache_duration_seconds: int = 30):
+    def __init__(self, cache_duration_seconds: int = 10):  # Changed from 30 to 10 seconds
         self.data = None
         self.cache_duration_seconds = cache_duration_seconds
         self.last_updated = time.monotonic() - self.cache_duration_seconds

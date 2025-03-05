@@ -39,7 +39,7 @@ except Exception as e:
 
 
 # Initialize cache for metrics
-metrics_cache = CachedData(cache_duration_seconds=30)
+metrics_cache = CachedData(cache_duration_seconds=10)  # Changed from 30 to 10 seconds
 @app.route('/api/metrics/upload-metrics', methods=['POST'])
 def handle_metrics():
     logger.debug(f"Handling {request.method} request to /api/metrics")

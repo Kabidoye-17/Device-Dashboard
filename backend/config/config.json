@@ -50,8 +50,8 @@
     "server": {
         "url": "http://Kabidoye17.pythonanywhere.com",
         "timeout": 5,
-        "collection_interval": 15,
-        "upload_interval": 30,
+        "collection_interval": 5,
+        "upload_interval": 10,
         "max_queue_size": 500,
         "batch_size": 9,
         "api_metrics_endpoint": "api/metrics/upload-metrics"
