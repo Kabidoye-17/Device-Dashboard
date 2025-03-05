@@ -35,6 +35,7 @@ function CryptoPrices() {
         const response = await fetch(`${apiUrl}/api/metrics/get-latest-metrics`);
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
+        console.log('Fetched Data:', data); // Log the fetched data
 
         const metricsData = {
           BTC: { price: 0, bid: 0, ask: 0, timestamp: '-' },
@@ -55,17 +56,21 @@ function CryptoPrices() {
           });
         });
 
-        // Initialize historical data with the latest 10 timestamps
+        // Initialize historical data with the latest fetched metrics and add to the history
         setHistoricalData(prev => {
-          const newBTCData = [...prev.BTC, metricsData.BTC].slice(-10);
-          const newETHData = [...prev.ETH, metricsData.ETH].slice(-10);
+          const newBTCData = [...prev.BTC, { ...metricsData.BTC, timestamp: metricsData.BTC.timestamp }].slice(-10);
+          const newETHData = [...prev.ETH, { ...metricsData.ETH, timestamp: metricsData.ETH.timestamp }].slice(-10);
+          console.log('Updated Historical Data BTC:', newBTCData); // Log historical data for BTC
+          console.log('Updated Historical Data ETH:', newETHData); // Log historical data for ETH
           return {
             BTC: newBTCData,
             ETH: newETHData
           };
         });
-        
+
         setCryptoMetrics(metricsData);
+        console.log('Updated Crypto Metrics:', metricsData); // Log the updated crypto metrics
+
       } catch (error) {
         console.error('Fetch error:', error);
         setError(error.message);
@@ -73,7 +78,7 @@ function CryptoPrices() {
     };
 
     fetchCryptoMetrics();
-    const interval = setInterval(fetchCryptoMetrics, 10000);
+    const interval = setInterval(fetchCryptoMetrics, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -158,11 +163,25 @@ function CryptoPrices() {
   return (
     <div>
       <h1>Crypto Metrics</h1>
-      <div>Last Updated: {formatTimestamp(cryptoMetrics.BTC.timestamp)}</div>
-      
+
+      {/* Display Current Values */}
+      <div>
+        <h1>BTC - Price: ${cryptoMetrics.BTC.price.toFixed(2)}</h1>
+        <h1>Bid: ${cryptoMetrics.BTC.bid.toFixed(2)}</h1>
+        <h1>Ask: ${cryptoMetrics.BTC.ask.toFixed(2)}</h1>
+        <h1>Last Updated: {formatTimestamp(cryptoMetrics.BTC.timestamp)}</h1>
+      </div>
+
+      <div>
+        <h1>ETH - Price: ${cryptoMetrics.ETH.price.toFixed(2)}</h1>
+        <h1>Bid: ${cryptoMetrics.ETH.bid.toFixed(2)}</h1>
+        <h1>Ask: ${cryptoMetrics.ETH.ask.toFixed(2)}</h1>
+        <h1>Last Updated: {formatTimestamp(cryptoMetrics.ETH.timestamp)}</h1>
+      </div>
+
       {/* Charts Section */}
-      <div style={{ 
-        display: 'flex', 
+      <div style={{
+        display: 'flex',
         flexDirection: 'column',
         gap: '20px',
         marginBottom: '30px'
@@ -172,7 +191,6 @@ function CryptoPrices() {
 
         {/* ETH Chart */}
         {renderChart(memoizedHistoricalData.ETH, 'ETH')}
-
       </div>
     </div>
   );

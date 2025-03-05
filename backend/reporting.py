@@ -44,9 +44,14 @@ class MetricsReporter:
     def get_latest_metrics(self):
         session = self.get_session()
         try:
-            ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
+            # Get the most recent timestamp from the database
+            latest_timestamp = session.query(sa.func.max(MetricMeasurement.timestamp_utc)).scalar()
+            if not latest_timestamp:
+                logger.warning("No metrics found in the database.")
+                return []
 
-            logger.debug("Fetching metrics from the last 10 minutes")
+            ten_minutes_ago = latest_timestamp - timedelta(minutes=10)
+            logger.debug(f"Fetching metrics from the last 10 minutes based on the latest timestamp: {latest_timestamp.isoformat()}")
 
             metrics = (
                 session.query(MetricMeasurement)
