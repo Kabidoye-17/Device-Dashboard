@@ -64,7 +64,14 @@ class DatabaseAggregator:
         session = self.get_session()
         try:
             logger.info(f"Storing {len(metrics_data)} metrics")
-            logger.info(f"metrics_data in upload enpoint☀️ ☀️: {metrics_data}")
+
+        
+            metric_type_cache = {}
+            unit_cache = {}
+            device_cache = {}
+
+            measurements = []
+
             for metric in metrics_data:
                 logger.debug(f"Processing metric: {metric}")
 
@@ -75,37 +82,46 @@ class DatabaseAggregator:
                     logger.warning(f"Invalid metric value: {metric.get('value')}. Skipping.")
                     continue
 
-                metric_type = self.get_or_create(
-                    MetricType, 
-                    filter_by={"name": str(metric.get("type", "system"))}
+                # Get or create MetricType (cache results to minimize queries)
+                metric_type_name = str(metric.get("type", "system"))
+                if metric_type_name not in metric_type_cache:
+                    metric_type_cache[metric_type_name] = self.get_or_create(
+                        MetricType, filter_by={"name": metric_type_name}
+                    )
+                metric_type = metric_type_cache[metric_type_name]
+
+                # Get or create Unit (cache results)
+                unit_name = str(metric.get("unit", "unknown"))
+                if unit_name not in unit_cache:
+                    unit_cache[unit_name] = self.get_or_create(Unit, filter_by={"unit_name": unit_name})
+                unit = unit_cache[unit_name]
+
+                # Get or create Device (cache results)
+                device_id = str(metric.get("device_id", "unknown"))
+                if device_id not in device_cache:
+                    device_cache[device_id] = self.get_or_create(
+                        Device,
+                        filter_by={"device_id": device_id},
+                        defaults={"device_name": str(metric.get("device_name", "unknown"))}
+                    )
+                device = device_cache[device_id]
+
+                # Prepare metric measurement for bulk insert
+                measurements.append(
+                    MetricMeasurement(
+                        device_id=device.device_id,
+                        name=str(metric["name"]),
+                        value=metric_value,
+                        type_id=metric_type.id,
+                        unit_id=unit.id,
+                        timestamp_utc=metric.get("timestamp_utc"),
+                        utc_offset=metric.get("utc_offset")
+                    )
                 )
 
-                unit = self.get_or_create(
-                    Unit, 
-                    filter_by={"unit_name": str(metric.get("unit", "unknown"))}
-                )
 
-                device = self.get_or_create(
-                    Device, 
-                    filter_by={"device_id": str(metric.get("device_id", "unknown"))},
-                    defaults={"device_name": str(metric.get("device_name", "unknown"))}
-                )
-
-                device = session.merge(device)  
-                metric_type = session.merge(metric_type)  
-                unit = session.merge(unit)  
-
-
-                measurement = MetricMeasurement(
-                    device_id=device.device_id,  
-                    name=str(metric["name"]),
-                    value=metric_value,
-                    type_id=metric_type.id,
-                    unit_id=unit.id,
-                    timestamp_utc=metric.get("timestamp_utc"),
-                    utc_offset=metric.get("utc_offset")
-                )
-                session.add(measurement)
+            if measurements:
+                session.bulk_save_objects(measurements)
 
             session.commit()
             logger.info("Successfully stored all metrics")
@@ -117,6 +133,3 @@ class DatabaseAggregator:
             raise
         finally:
             self.cleanup_session(session)
-
-
-    

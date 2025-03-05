@@ -1,8 +1,8 @@
-from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
+from backend.models.measurement import Measurement, Device
 from models.db_models import MetricMeasurement
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session,joinedload
 from utils.logger import get_logger
 import sqlalchemy as sa
 
@@ -43,18 +43,29 @@ class MetricsReporter:
         session = self.get_session()
         try:
             logger.debug(f"Fetching latest {limit} metrics")
-            metrics = session.query(MetricMeasurement)\
-                .order_by(MetricMeasurement.id.desc())\
-                .limit(limit)\
-                .all()
-            metrics_list = [metric.to_dict() for metric in metrics]
-            for metric in metrics_list:
-                if isinstance(metric['timestamp_utc'], datetime):  # Ensure it's a datetime object
-                    metric['timestamp_utc'] = metric['timestamp_utc'].isoformat()
-                    logger.info(f"metric['timestamp_utc'] in get_latest_batch: {metric['timestamp_utc']}")
-                    
-            logger.info(f"Retrieved {len(metrics_list)} metrics")
-            return metrics_list
+            metrics = session.query(MetricMeasurement) \
+            .options(joinedload(MetricMeasurement.device).joinedload(Device.details)) \
+            .order_by(MetricMeasurement.id.desc()) \
+            .limit(limit) \
+            .all()
+       
+            measurements = []
+            for metric in metrics:
+                measurement = Measurement(
+                    device_id=metric.device.device_id,
+                    device_name=metric.device.details.device_name,
+                    name=metric.name,
+                    value=metric.value,
+                    type=metric.type.name,
+                    unit=metric.unit.unit_name,
+                    timestamp_utc=metric.timestamp_utc,
+                    utc_offset=metric.utc_offset
+                )
+                measurements.append(measurement.serialize())  
+
+            logger.info(f"Retrieved {len(measurements)} metrics")
+            return measurements
+
         except SQLAlchemyError as e:
             session.rollback()
             logger.error(f"Error fetching metrics: {str(e)}")

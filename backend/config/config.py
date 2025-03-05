@@ -82,6 +82,7 @@ class ServerConfig:
     collection_interval: int
     upload_interval: int
     max_queue_size: int
+    batch_size: int
     api_metrics_endpoint: str
 
 @dataclass

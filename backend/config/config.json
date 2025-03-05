@@ -52,7 +52,8 @@
         "timeout": 5,
         "collection_interval": 15,
         "upload_interval": 30,
-        "max_queue_size": 100,
+        "max_queue_size": 500,
+        "batch_size": 10,
         "api_metrics_endpoint": "api/metrics/upload-metrics"
     }
 }

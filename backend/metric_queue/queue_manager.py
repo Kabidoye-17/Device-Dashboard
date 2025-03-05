@@ -26,6 +26,7 @@ class UploaderQueue:
         self.system = config.collector_types.system
         self.collection_interval = config.server.collection_interval
         self.upload_interval = config.server.upload_interval
+        self.batch_size = config.server.batch_size
         self.timeout = config.server.timeout
         self.max_queue_size = config.server.max_queue_size
         self.registry = CollectorRegistry()
@@ -105,11 +106,11 @@ class UploaderQueue:
     def upload_from_queue(self) -> None:
         """Continuously uploads metrics from the queue at upload_interval"""
         while self.running:
-            if not self.queue:
-                logger.info("No metrics to upload.")
+            if len(self.queue) < 9:
+                logger.info(f"Queue size ({len(self.queue)}) is less than {self.batch_size}, waiting for a full batch.")
             else:
                 try:
-                    data_to_upload = list(self.queue)[:9]
+                    data_to_upload = list(self.queue)[:self.batch_size]
 
                     url = f"{self.server_url}/{self.api_metrics_endpoint}"
                     logger.debug(f"Uploading to {url} with {len(data_to_upload)} metrics")
