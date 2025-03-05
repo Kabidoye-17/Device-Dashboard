@@ -71,7 +71,7 @@ class UploaderQueue:
                                 value=float(metric[field]),
                                 type=collector_type,
                                 unit=rule.unit,
-                                timestamp_utc=get_utc_timestamp().isoformat(),
+                                timestamp_utc=get_utc_timestamp(),
                                 utc_offset=get_utc_offset(),
                             )
                             formatted_metrics.append(measurement.serialize())
