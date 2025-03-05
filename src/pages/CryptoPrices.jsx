@@ -32,7 +32,7 @@ function CryptoPrices() {
   useEffect(() => {
     const fetchCryptoMetrics = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/metrics/latest-batch`);
+        const response = await fetch(`${apiUrl}/api/metrics/get-latest-metrics`);
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
 
@@ -50,7 +50,7 @@ function CryptoPrices() {
               if (metric.name.includes('Price')) metricsData[coin].price = value;
               else if (metric.name.includes('Bid')) metricsData[coin].bid = value;
               else if (metric.name.includes('Ask')) metricsData[coin].ask = value;
-              metricsData[coin].timestamp = metric.timestamp;
+              metricsData[coin].timestamp = metric.timestamp_utc;
             }
           });
         });

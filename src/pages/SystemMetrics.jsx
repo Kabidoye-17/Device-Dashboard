@@ -37,7 +37,7 @@ function SystemMetrics() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/metrics/latest-batch`);
+        const response = await fetch(`${apiUrl}/api/metrics/get-latest-metrics`);
         if (!response.ok) throw new Error('Network response was not ok');
         const data = await response.json();
         
@@ -59,15 +59,15 @@ function SystemMetrics() {
           switch(metric.name) {
             case 'CPU Load':
               metricsData.cpu_load = value;
-              metricsData.timestamp = metric.timestamp;
+              metricsData.timestamp = metric.timestamp_utc;
               break;
             case 'RAM Usage':
               metricsData.ram_usage = value;
-              metricsData.timestamp = metric.timestamp;
+              metricsData.timestamp = metric.timestamp_utc;
               break;
             case 'Network Sent':
               metricsData.network_sent = value;
-              metricsData.timestamp = metric.timestamp;
+              metricsData.timestamp = metric.timestamp_utc;
               break;
             default:
               console.debug('Unhandled system metric:', metric.name);
