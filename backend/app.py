@@ -58,33 +58,29 @@ def handle_metrics():
 @app.route('/api/metrics/get-latest-metrics', methods=['GET'])
 def get_latest_batch():
     logger.debug("Handling GET request to get-latest-metrics")
-    with metrics_cache:
-        if not metrics_cache.is_expired():
-            logger.info("Serving metrics from cache")
-            return jsonify(metrics_cache.get_data()), 200
-
-        with CacheUpdateManager(metrics_cache) as manager:
-            if manager.update_started_elsewhere():
-                logger.info("Waiting for another thread to update the cache")
-                manager.spin_wait_for_update_to_complete()
+    try:
+        with metrics_cache:
+            if not metrics_cache.is_expired():
+                logger.info("Serving metrics from cache")
                 return jsonify(metrics_cache.get_data()), 200
 
-            try:
+            with CacheUpdateManager(metrics_cache) as manager:
+                if manager.update_started_elsewhere():
+                    logger.info("Waiting for another thread to update the cache")
+                    manager.spin_wait_for_update_to_complete()
+                    return jsonify(metrics_cache.get_data()), 200
+
                 logger.info("Fetching new metrics data")
                 metrics = metrics_reporter.get_latest_metrics(50)
-                logger.info(f"metrics_data in get endpoint ☀️☀️☀️: {metrics}")
-                logger.info(f"Storing {len(metrics)} metrics")
-
-                # Verify data before sending
                 if not metrics:
                     return jsonify([]), 200
 
                 metrics_cache.update(metrics)
                 logger.info("Cache updated with new metrics data")
                 return jsonify(metrics), 200
-            except Exception as e:
-                logger.error(f"Error in get_latest_batch: {str(e)}\n{traceback.format_exc()}")
-                return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        logger.error(f"Error in get_latest_batch: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
 # Add a test route to verify the application is running
 @app.route('/', methods=['GET'])

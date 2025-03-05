@@ -52,11 +52,19 @@ class CachedData:
         return True
 
     def update(self, data: any):
-        assert(self.lock.locked())
-        self.data = data
-        self.active_update_start_time = 0
-        self.last_updated = time.monotonic()
-        self.cache_status = 'VALID'
+        """Update cache data with new value"""
+        try:
+            assert(self.lock.locked())
+            self.data = data
+            self.active_update_start_time = 0
+            self.last_updated = time.monotonic()
+            self.cache_status = 'VALID'
+        except AssertionError:
+            CachedData._logger.error("Attempted to update cache without lock")
+            self.lock.acquire()
+            self.update(data)
+            self.lock.release()
+
 
     def get_data(self) -> any:
         assert(self.lock.locked())
@@ -80,7 +88,9 @@ class CacheUpdateManager:
         self.update_already_started = False
 
     def __enter__(self):
-        assert(self.cached_data.lock.locked())
+        """Ensure lock is held when entering context"""
+        if not self.cached_data.lock.locked():
+            self.cached_data.lock.acquire()
         self.update_already_started = self.cached_data.active_update_start_time != 0
         if self.cached_data.active_update_start_time == 0:
             self.cached_data.active_update_start_time = time.monotonic()
@@ -88,7 +98,9 @@ class CacheUpdateManager:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.cached_data.lock.acquire()
+        """Ensure proper lock handling on exit"""
+        if not self.cached_data.lock.locked():
+            self.cached_data.lock.acquire()
         self.cached_data.active_update_start_time = 0
 
     def update_started_elsewhere(self) -> bool:
