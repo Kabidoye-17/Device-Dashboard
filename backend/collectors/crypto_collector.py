@@ -2,6 +2,8 @@ import requests
 from utils.logger import get_logger
 from collectors.base_collector import BaseCollector
 from config.config import load_config
+import machineid
+
 
 logger = get_logger('CryptoCollector')
 config = load_config()
@@ -14,7 +16,8 @@ class CryptoCollector(BaseCollector):
         self.currency_pairs = config.crypto_collector.currency_pairs
         self.base_url = config.crypto_collector.base_url
         self.collector_type = config.collector_types.crypto
-        self.device_id = config.crypto_collector.device_id
+        self.device_id = machineid.hashed_id(config.crypto_collector.device_id)
+    
         self.ticker_endpoint = config.crypto_collector.ticker_endpoint
         self.device_name = config.crypto_collector.device_name
         self.latest_metrics = []
