@@ -55,11 +55,15 @@ function CryptoPrices() {
           });
         });
 
-        // Update historical data, keeping only the last 10 entries
-        setHistoricalData(prev => ({
-          BTC: [...prev.BTC.slice(-9), metricsData.BTC], // Keep only the last 10 entries
-          ETH: [...prev.ETH.slice(-9), metricsData.ETH]  // Keep only the last 10 entries
-        }));
+        // Initialize historical data with the latest 10 timestamps
+        setHistoricalData(prev => {
+          const newBTCData = [...prev.BTC, metricsData.BTC].slice(-10);
+          const newETHData = [...prev.ETH, metricsData.ETH].slice(-10);
+          return {
+            BTC: newBTCData,
+            ETH: newETHData
+          };
+        });
         
         setCryptoMetrics(metricsData);
       } catch (error) {
@@ -78,6 +82,29 @@ function CryptoPrices() {
     BTC: historicalData.BTC,
     ETH: historicalData.ETH
   }), [historicalData.BTC, historicalData.ETH]);
+
+  const renderHistoricalTable = (data, coin) => (
+    <table>
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Price</th>
+          <th>Bid</th>
+          <th>Ask</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map((entry, index) => (
+          <tr key={`${coin}-${index}`}>
+            <td>{formatTimestamp(entry.timestamp)}</td>
+            <td>{entry.price}</td>
+            <td>{entry.bid}</td>
+            <td>{entry.ask}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
 
   if (error) {
     return (
@@ -126,6 +153,12 @@ function CryptoPrices() {
           />
         </div>
 
+        {/* BTC Historical Data Table */}
+        <div>
+          <h2>BTC Historical Data</h2>
+          {renderHistoricalTable(memoizedHistoricalData.BTC, 'BTC')}
+        </div>
+
         {/* ETH Charts */}
         <div style={{ 
           display: 'flex', 
@@ -148,6 +181,12 @@ function CryptoPrices() {
             priceType="bid"
             data={memoizedHistoricalData.ETH}
           />
+        </div>
+
+        {/* ETH Historical Data Table */}
+        <div>
+          <h2>ETH Historical Data</h2>
+          {renderHistoricalTable(memoizedHistoricalData.ETH, 'ETH')}
         </div>
       </div>
     </div>
