@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SQLAlchemyError
-from models.db_models import Base, Device, MetricType, Unit, MetricMeasurement
+from models.db_models import Base, Device, MetricType, Unit, MetricMeasurement, DeviceDetails
 from utils.logger import get_logger
 import sqlalchemy as sa
 
@@ -46,6 +46,7 @@ class DatabaseAggregator:
             if instance:
                 return instance  
             
+            # Create new instance with filter criteria and defaults
             instance = model(**filter_by, **defaults)
             session.add(instance)
             session.commit()
@@ -56,19 +57,18 @@ class DatabaseAggregator:
             logger.error(f"Error in get_or_create for {model.__name__}: {str(e)}")
             raise
         finally:
-            session.expunge(instance)  # 🚀 Ensures instance is still usable
+            session.expunge(instance)  # Ensures instance is still usable
             self.cleanup_session(session)
 
-            
     def store_metrics(self, metrics_data):
         session = self.get_session()
         try:
             logger.info(f"Storing {len(metrics_data)} metrics")
 
-        
             metric_type_cache = {}
             unit_cache = {}
             device_cache = {}
+            device_details_cache = {}
 
             measurements = []
 
@@ -106,6 +106,16 @@ class DatabaseAggregator:
                     )
                 device = device_cache[device_id]
 
+                # Handle DeviceDetails (if not already cached or created)
+                device_name = str(metric.get("device_name", "unknown"))
+                if device_id not in device_details_cache:
+                    device_details_cache[device_id] = self.get_or_create(
+                        DeviceDetails,
+                        filter_by={"device_id": device_id},
+                        defaults={"device_name": device_name}
+                    )
+                device_details = device_details_cache[device_id]
+
                 # Prepare metric measurement for bulk insert
                 measurements.append(
                     MetricMeasurement(
@@ -119,7 +129,7 @@ class DatabaseAggregator:
                     )
                 )
 
-
+            # Bulk insert metrics
             if measurements:
                 session.bulk_save_objects(measurements)
 
