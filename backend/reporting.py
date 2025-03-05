@@ -1,7 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from models.measurement import Measurement, Device
+from models.measurement import Measurement
 from models.db_models import MetricMeasurement
+from models.db_models import Device
 from sqlalchemy.orm import sessionmaker, scoped_session,joinedload
 from utils.logger import get_logger
 import sqlalchemy as sa
