@@ -12,11 +12,24 @@ class DatabaseAggregator:
         try:
             logger.info("Initializing database connection...")
             self.engine = create_engine(connection_string, pool_recycle=280)  # Add pool_recycle for MySQL
-            Base.metadata.create_all(self.engine)
             self.Session = scoped_session(sessionmaker(bind=self.engine))
+            self._check_and_clear_connections()
+            Base.metadata.create_all(self.engine)
             logger.info("Database connection established successfully")
         except SQLAlchemyError as e:
             logger.error(f"Failed to initialize database: {str(e)}")
+            raise
+
+    def _check_and_clear_connections(self):
+        try:
+            with self.engine.connect() as conn:
+                result = conn.execute(sa.text("SHOW STATUS LIKE 'Threads_connected'"))
+                active_connections = int(result.fetchone()[1])
+                if active_connections > 8:
+                    logger.warning(f"Active connections ({active_connections}) exceed limit. Disposing all connections.")
+                    self.engine.dispose()
+        except SQLAlchemyError as e:
+            logger.error(f"Error checking active connections: {str(e)}")
             raise
 
     def get_session(self):
