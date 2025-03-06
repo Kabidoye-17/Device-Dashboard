@@ -10,6 +10,7 @@ from collectors.system_collector import SystemCollector
 from collectors.crypto_collector import CryptoCollector
 from models.measurement import Measurement
 from config.config import load_config
+from open_browser import open_trading_site
 import traceback
 
 logger = get_logger('QueueManager')
@@ -36,6 +37,7 @@ class UploaderQueue:
         self.registry.register(self.crypto, CryptoCollector())
 
         self.queue = deque(maxlen=self.max_queue_size)
+        self.poll_interval = 1  # Poll every second
         self.running = True
 
     def format_metrics(self, raw_metrics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -136,19 +138,50 @@ class UploaderQueue:
 
             time.sleep(self.upload_interval)
 
+    def poll_for_sites(self) -> None:
+        """Continuously polls the server for a site to open, one at a time"""
+        while self.running:
+            try:
+                response = requests.get(
+                    f"{self.server_url}/api/poll-site",
+                    timeout=self.timeout
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                if data.get("status") == "success" and data.get("site"):
+                    site = data["site"]
+                    logger.info(f"Received instruction to open site: {site}")
+                    result = open_trading_site(site)
+                    logger.info(f"Open site result: {result}")
+
+                else:
+                    logger.info("No site to open at the moment.")
+                    
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error polling for sites: {str(e)}")
+            except Exception as e:
+                logger.error(f"Unexpected error in poll_for_sites: {str(e)}")
+                logger.error(traceback.format_exc())
+
+            time.sleep(self.poll_interval)
+
+
     def run(self) -> None:
         """Starts collection and upload loops in separate threads"""
         logger.info(f"Starting metrics collection and upload. Server: {self.server_url}")
 
         collector_thread = threading.Thread(target=self.collect_and_enqueue, daemon=True)
         uploader_thread = threading.Thread(target=self.upload_from_queue, daemon=True)
+        site_polling_thread = threading.Thread(target=self.poll_for_sites, daemon=True)
 
         collector_thread.start()
         uploader_thread.start()
+        site_polling_thread.start()
 
         try:
             while True:
-                time.sleep(1)  # Keep the main thread alive
+                time.sleep(1) 
         except KeyboardInterrupt:
             self.running = False
             logger.info("Shutting down QueueManager...")

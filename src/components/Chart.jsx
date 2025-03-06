@@ -12,7 +12,9 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import 'chartjs-adapter-date-fns';
-
+import {  Button} from '../styles/StyledComponents';
+import { MetricHeading } from '../styles/StyledComponents';
+import { tradingSites, apiUrl } from '../config';
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -92,6 +94,25 @@ const generateDatasets = (cryptoData, type) => {
 const Chart = ({ cryptoData }) => {
   const cryptoTypes = [...new Set(cryptoData.map(item => item.name.split('-')[0]))];
 
+  const openTradingSite = async (type) => {
+    const site = type === 'BTC' ? tradingSites.BTC : tradingSites.ETH;
+    try {
+      const response = await fetch(`${apiUrl}/api/recieve-site`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ site_url: site })
+      });
+      const data = await response.json();
+      if (data.status === 'error') {
+        console.error('Error opening site:', data.message);
+      }
+    } catch (error) {
+      console.error('Error making request:', error);
+    }
+  };
+
   return (
     <div style={{ overflowX: 'hidden' }}>
       {cryptoTypes.map(type => {
@@ -101,7 +122,8 @@ const Chart = ({ cryptoData }) => {
 
         return (
           <div key={type} style={{ width: '100%', maxWidth: '100%' }}>
-            <h3>{type} Metrics</h3>
+            <MetricHeading>{type} Metrics</MetricHeading>
+            <Button onClick={() => openTradingSite(type)}>Open {type} trading site</Button>
             <div style={{ width: '100%', height: '800px' }}>
               <Line options={options} data={{ datasets }} />
             </div>

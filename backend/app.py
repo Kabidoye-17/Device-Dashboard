@@ -37,9 +37,10 @@ except Exception as e:
     logger.critical(f"Failed to initialize Metrics reporter: {str(e)}")
     raise
 
-
 # Initialize cache for metrics
 metrics_cache = CachedData(cache_duration_seconds=10)  # Changed from 30 to 10 seconds
+current_site = None
+
 @app.route('/api/metrics/upload-metrics', methods=['POST'])
 def handle_metrics():
     logger.debug(f"Handling {request.method} request to /api/metrics")
@@ -115,6 +116,42 @@ def log_routes():
 
 # Call route logging after all routes are registered
 log_routes()
+
+# Add this new endpoint
+@app.route('/api/poll-site', methods=['GET'])
+def poll_site():
+    logger.debug("Received poll request for site opening")
+    try:
+        if not current_site == None:
+            return jsonify({"status": "success", "site": current_site}), 200
+
+        return jsonify({"status": "no_data"}), 200
+
+    except Exception as e:
+        logger.error(f"Error in poll_site: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/receive-site', methods=['POST'])
+def receive_site():
+    try:
+        data = request.get_json()
+        current_site = data.get('site')
+
+        if not current_site:
+            logger.error("No trading site received")
+            return jsonify({"error": "No site URL provided"}), 400
+
+        # Add the site to the queue immediately
+        logger.info(f"{current_site} retrieved")
+        
+        return jsonify({
+            "status": "success",
+            "message": "Site sent for opening"
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error in receive_site: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     logger.info("Starting Flask application...")
