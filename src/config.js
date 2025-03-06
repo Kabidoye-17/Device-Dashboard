@@ -7,3 +7,4 @@ const config = {
 };
 
 export const apiUrl = config.apiUrl;
+export const tradingSites = config.tradingSites;
