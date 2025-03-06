@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import SystemMetrics from './pages/SystemMetrics';
-import CryptoPrices from './pages/CryptoPrices';
-import { Container, Navigation, NavList, Link } from './styles/StyledComponents';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { Container} from './styles/StyledComponents';
 
 export const Table = styled.table`
   width: 100%;
