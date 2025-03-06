@@ -131,7 +131,7 @@ def poll_site():
         logger.error(f"Error in poll_site: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/receive-site', methods=['POST'])
+@app.route('/api/recieve-site', methods=['POST'])
 def receive_site():
     try:
         data = request.get_json()
