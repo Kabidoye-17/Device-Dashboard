@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { Container} from './styles/StyledComponents';
+import { apiUrl } from '../config';
+import styled from 'styled-components';
 
 export const Table = styled.table`
   width: 100%;
