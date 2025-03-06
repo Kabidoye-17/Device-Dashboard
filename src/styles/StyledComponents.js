@@ -2,7 +2,25 @@ import styled from 'styled-components';
 import { Link as RouterLink } from 'react-router-dom';
 
 export const Container = styled.div`
-  padding: 20px;
+  padding: 5px;
+  width: 100%
+`;
+
+export const GaugeContainer = styled.div`
+  width: 100%;
+  height: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+`;
+
+export const ChoiceContainer = styled.div`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
 `;
 
 export const Navigation = styled.nav`
@@ -62,4 +80,51 @@ export const MetricsGrid = styled.div`
   background: #f5f5f5;
   padding: 20px;
   border-radius: 8px;
+`;
+
+export const HeaderBanner = styled.div`
+  color: white;
+  background:  #009879;
+  height: 150px;	
+  font-size: 40px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+`;
+
+export const MetricHeading = styled.div`
+  color: black;
+  font-size: 32px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100px;	
+`;
+
+/* CSS */
+export const Button = styled.button`
+ background: #009879;
+  border-radius: 999px;
+  box-shadow:rgb(1, 71, 57) 0 10px 20px -10px;
+  box-sizing: border-box;
+  color: #FFFFFF;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 24px;
+  opacity: 1;
+  outline: 0 solid transparent;
+  padding: 8px 18px;
+  margin-bottom: 10px;
+  margin-right: 2px;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  width: fit-content;
+  word-break: break-word;
+  border: 0;
 `;
