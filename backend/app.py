@@ -120,17 +120,20 @@ log_routes()
 # Add this new endpoint
 @app.route('/api/poll-site', methods=['GET'])
 def poll_site():
+    global current_site  # We modify this global variable
     logger.debug("Received poll request for site opening")
+
     try:
-        if not current_site == None:
-            return jsonify({"status": "success", "site": current_site}), 200
+        if current_site is not None:
+            site_to_return = current_site  # Store the site URL temporarily
+            current_site = None  # Reset after serving it once
+            return jsonify({"status": "success", "site": site_to_return}), 200
 
         return jsonify({"status": "no_data"}), 200
 
     except Exception as e:
         logger.error(f"Error in poll_site: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
 @app.route('/api/recieve-site', methods=['POST'])
 def receive_site():
     global current_site  # Indicate that we are modifying the global variable
