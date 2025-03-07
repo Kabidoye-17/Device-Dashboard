@@ -139,7 +139,7 @@ def receive_site():
     global current_site  # Indicate that we are modifying the global variable
     try:
         data = request.get_json()
-        current_site = data.get('site')  # Update the global variable
+        current_site = data.get('site_url')  # Update the global variable
 
         if not current_site:
             logger.error("No trading site received")
