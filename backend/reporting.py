@@ -41,7 +41,7 @@ class MetricsReporter:
             logger.error(f"Database connection failed: {str(e)}")
             return False
 
-    def get_latest_metrics(self, metric_type=None, page_number=1, page_size=20):
+    def get_latest_metrics(self, metric_type=None, page_number=1, page_size=5):
         if page_number < 1:
             page_number = 1
         

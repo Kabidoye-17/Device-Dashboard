@@ -98,42 +98,49 @@ const PaginationButton = styled.button`
   }
 `;
 
-const Table = ({ data, columns, formatTimestamp, getSymbolFromCurrency, currentPage, totalPages, onPageChange }) => (
-  <TableContainer>
-    <StyledTable>
-      <TableHeader>
-        <TableHeaderRow>
-          {columns.map((column, index) => (
-            <TableHeaderCell key={index}>{column}</TableHeaderCell>
-          ))}
-        </TableHeaderRow>
-      </TableHeader>
-      <TableBody>
-        {data.length > 0 ? (
-          data.map((metric, index) => (
-            <TableRow key={index} className={index % 2 === 0 ? '' : 'active-row'}>
-              <TableCell>{metric.deviceName}</TableCell>
-              <TableCell>{metric.name}</TableCell>
-              <TableCell>{getSymbolFromCurrency ? getSymbolFromCurrency(metric.unit) : ''}{metric.value}</TableCell>
-              <TableCell>{formatTimestamp(metric.timestamp_utc, metric.utc_offset)}</TableCell>
+const Table = ({ data, columns, formatTimestamp, getSymbolFromCurrency, currentPage, totalPages, onPageChange }) => {
+  const itemsPerPage = 5;
+  const startIndex = currentPage * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = data.slice(startIndex, endIndex);
+
+  return (
+    <TableContainer>
+      <StyledTable>
+        <TableHeader>
+          <TableHeaderRow>
+            {columns.map((column, index) => (
+              <TableHeaderCell key={index}>{column}</TableHeaderCell>
+            ))}
+          </TableHeaderRow>
+        </TableHeader>
+        <TableBody>
+          {paginatedData.length > 0 ? (
+            paginatedData.map((metric, index) => (
+              <TableRow key={index} className={index % 2 === 0 ? '' : 'active-row'}>
+                <TableCell>{metric.deviceName}</TableCell>
+                <TableCell>{metric.name}</TableCell>
+                <TableCell>{getSymbolFromCurrency ? getSymbolFromCurrency(metric.unit) : ''}{metric.value}</TableCell>
+                <TableCell>{formatTimestamp(metric.timestamp_utc, metric.utc_offset)}</TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length}>No data available.</TableCell>
             </TableRow>
-          ))
-        ) : (
-          <TableRow>
-            <TableCell colSpan={columns.length}>No data available.</TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </StyledTable>
-    <PaginationContainer>
-      <PaginationButton onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 0}>
-        Previous
-      </PaginationButton>
-      <PaginationButton onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= totalPages - 1 || totalPages === 0}>
-        Next
-      </PaginationButton>
-    </PaginationContainer>
-  </TableContainer>
-);
+          )}
+        </TableBody>
+      </StyledTable>
+      <PaginationContainer>
+        <PaginationButton onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 0}>
+          Previous
+        </PaginationButton>
+        <PaginationButton onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= totalPages - 1 || totalPages === 0}>
+          Next
+        </PaginationButton>
+      </PaginationContainer>
+    </TableContainer>
+  );
+};
 
 export default Table;
