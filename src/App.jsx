@@ -20,9 +20,15 @@ function App() {
   const [currentSystemPage, setCurrentSystemPage] = useState(0);
   const [totalCryptoPages, setTotalCryptoPages] = useState(0);
   const [totalSystemPages, setTotalSystemPages] = useState(0);
+  const [selectedDevice, setSelectedDevice] = useState('');
+  const [availableDevices, setAvailableDevices] = useState([]);
 
   const toggleSystemTable = () => setShowSystemTable(!showSystemTable);
   const toggleCryptoTable = () => setShowCryptoTable(!showCryptoTable);
+
+  const handleDeviceChange = (event) => {
+    setSelectedDevice(event.target.value);
+  };
 
   const formatData = (data) => {
     if (!Array.isArray(data)) {
@@ -77,6 +83,12 @@ function App() {
           if (updatedMetric) {
             setSelectedMetricValue(updatedMetric.value);
           }
+        }
+
+        const uniqueDevices = [...new Set(formattedLatestData.map(metric => metric.deviceName))];
+        setAvailableDevices(uniqueDevices);
+        if (!selectedDevice && uniqueDevices.length > 0) {
+          setSelectedDevice(uniqueDevices[0]);
         }
 
         setHistoricalSystemData(systemData);
@@ -205,12 +217,18 @@ function App() {
     <Router basename="/Device-Dashboard">
       <HeaderBanner>Device Dashboard</HeaderBanner>
       <div style={{ padding: '10px' }}>
+        <label htmlFor="device-select">Select Device:</label>
+        <select id="device-select" value={selectedDevice} onChange={handleDeviceChange}>
+          {availableDevices.map((device) => (
+            <option key={device} value={device}>{device}</option>
+          ))}
+        </select>
         <GaugeContainer>
           <MetricHeading>{selectedMetricName}</MetricHeading>
           <Gauge value={selectedMetricValue} />
           <ChoiceContainer>
             {systemMetrics.length > 0 &&
-              systemMetrics.map((metric) => (
+              systemMetrics.filter(metric => metric.deviceName === selectedDevice).map((metric) => (
                 metric.unit === '%' && <Button key={metric.name} onClick={() => { setSelectedMetricValue(metric.value); setSelectedMetricName(metric.name); }}>{metric.name}</Button>
               ))}
           </ChoiceContainer>
@@ -219,9 +237,9 @@ function App() {
         <MetricHeading>Latest System Metrics</MetricHeading>
         {systemMetrics && systemMetrics.length > 0 ? (
           <div>
-            <p>Device: {systemMetrics[0].deviceName}</p>
+            <p>Device: {selectedDevice}</p>
             <p>Time: {formatTimestamp(systemMetrics[0].timestamp_utc, systemMetrics[0].utc_offset)}</p>
-            {systemMetrics.map((metric) => (
+            {systemMetrics.filter(metric => metric.deviceName === selectedDevice).map((metric) => (
               <p key={metric.name}>{metric.name}: {metric.value} {metric.unit}</p>
             ))}
           </div>
@@ -235,7 +253,7 @@ function App() {
         </Button>
         {showSystemTable && (
           <Table
-            data={historicalSystemData}
+            data={historicalSystemData.filter(metric => metric.deviceName === selectedDevice)}
             columns={['Device', 'Metric', 'Value', 'Timestamp']}
             formatTimestamp={formatTimestamp}
             currentPage={currentSystemPage}

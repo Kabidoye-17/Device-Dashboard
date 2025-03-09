@@ -50,7 +50,7 @@ def handle_metrics():
             metrics_data = request.json
             if not metrics_data:
                 return jsonify({'error': 'No metrics data received'}), 400
-            
+
             logger.info(f"metrics_data in upload enpoint  ☀️: {metrics_data}")
             db_aggregator.store_metrics(metrics_data)
             return jsonify({'status': 'success', 'count': len(metrics_data)}), 200
@@ -63,20 +63,20 @@ def get_latest_batch():
     logger.debug("Handling GET request to get-latest-metrics")
     try:
         metric_type = request.args.get('metric_type')
-        
+
         try:
             page_number = int(request.args.get('page_number', 1))
         except (ValueError, TypeError):
             page_number = 1
-            
+
         page_size = 10  # Define fixed page size
-        
+
         if metric_type not in metrics_cache:
             return jsonify({'error': 'Invalid metric type'}), 400
-            
+
         logger.debug(f"Received metric_type: {metric_type}, page_number: {page_number}")
         cache = metrics_cache[metric_type]
-        
+
         with cache:
             if not cache.is_expired():
                 logger.info(f"Serving {metric_type} metrics from cache")
@@ -92,35 +92,38 @@ def get_latest_batch():
                         all_data = metrics_reporter.get_all_latest_metrics(metric_type=metric_type)
                         if not all_data:
                             return jsonify({'latest_metric': None, 'metrics': [], 'total_pages': 0, 'current_page': 1}), 200
-                        
+
                         cache.update(all_data)
                         logger.info(f"Cache updated with {len(all_data)} {metric_type} metrics")
-        
-        # Get the latest metric (from first batch)
-        latest_metric = all_data[0][0] if all_data and len(all_data) > 0 and len(all_data[0]) > 0 else None
-        
+
         # Flatten the metrics for pagination
-        flattened_metrics = []
-        for batch in all_data:
-            flattened_metrics.extend(batch)
-        
+        flattened_metrics = all_data[0] if all_data and len(all_data) > 0 else []
+        latest_metrics = None
+
+        # Find earliest timestamp and filter all matching metrics
+        if flattened_metrics:
+            earliest_timestamp = flattened_metrics[0]['timestamp_utc']
+            latest_metric = [m for m in flattened_metrics if m['timestamp_utc'] == earliest_timestamp]
+
+
+
         # Apply pagination to the flattened metrics
         total_count = len(flattened_metrics)
         total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
-        
+
         # Ensure page_number is valid
         if page_number < 1:
             page_number = 1
         if page_number > total_pages and total_pages > 0:
             page_number = total_pages
-        
+
         # Calculate slice indices for the flattened list
         start_idx = (page_number - 1) * page_size
         end_idx = min(start_idx + page_size, total_count)
-        
+
         # Slice the flattened data for the requested page
         page_data = flattened_metrics[start_idx:end_idx] if start_idx < total_count else []
-        
+
         logger.info(f"Serving page {page_number} of {total_pages} for {metric_type} metrics")
         return jsonify({
             'latest_metric': latest_metric,
@@ -128,11 +131,11 @@ def get_latest_batch():
             'total_pages': total_pages,
             'current_page': page_number
         }), 200
-        
+
     except Exception as e:
         logger.error(f"Error in get_latest_batch: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
-    
+
 # Add a test route to verify the application is running
 @app.route('/', methods=['GET'])
 def health_check():
@@ -196,7 +199,7 @@ def receive_site():
             return jsonify({"error": "No site URL provided"}), 400
 
         logger.info(f"{current_site} retrieved")
-        
+
         return jsonify({
             "status": "success",
             "message": "Site sent for opening"
