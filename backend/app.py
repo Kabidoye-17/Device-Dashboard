@@ -64,7 +64,7 @@ def get_latest_batch():
     try:
         metric_type = request.args.get('metric_type')
         page_number = int(request.args.get('page_number', 1))
-        page_size = 20  # Define fixed page size
+        page_size = 10  # Define fixed page size
         
         if metric_type not in metrics_cache:
             return jsonify({'error': 'Invalid metric type'}), 400

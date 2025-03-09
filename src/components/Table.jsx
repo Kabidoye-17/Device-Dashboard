@@ -99,10 +99,6 @@ const PaginationButton = styled.button`
 `;
 
 const Table = ({ data, columns, formatTimestamp, getSymbolFromCurrency, currentPage, totalPages, onPageChange }) => {
-  const itemsPerPage = 5;
-  const startIndex = currentPage * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedData = data.slice(startIndex, endIndex);
 
   return (
     <TableContainer>
@@ -115,8 +111,8 @@ const Table = ({ data, columns, formatTimestamp, getSymbolFromCurrency, currentP
           </TableHeaderRow>
         </TableHeader>
         <TableBody>
-          {paginatedData.length > 0 ? (
-            paginatedData.map((metric, index) => (
+          {data.length > 0 ? (
+            data.map((metric, index) => (
               <TableRow key={index} className={index % 2 === 0 ? '' : 'active-row'}>
                 <TableCell>{metric.deviceName}</TableCell>
                 <TableCell>{metric.name}</TableCell>
