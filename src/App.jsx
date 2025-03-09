@@ -22,6 +22,7 @@ function App() {
   const [totalSystemPages, setTotalSystemPages] = useState(0);
   const [selectedDevice, setSelectedDevice] = useState('');
   const [availableDevices, setAvailableDevices] = useState([]);
+  const [cryptoGraphData, setCryptoGraphData] = useState([]);
 
   const toggleSystemTable = () => setShowSystemTable(!showSystemTable);
   const toggleCryptoTable = () => setShowCryptoTable(!showCryptoTable);
@@ -159,6 +160,14 @@ function App() {
 
         setHistoricalCryptoData(cryptoData);
         setCryptoMetrics(formattedLatestData);
+
+        // Update cryptoGraphData
+        setCryptoGraphData(prevData => {
+          const newData = formattedLatestData.filter(metric => 
+            !prevData.some(prevMetric => prevMetric.timestamp_utc === metric.timestamp_utc)
+          );
+          return [...prevData, ...newData];
+        });
       } else {
         setHistoricalCryptoData([]);
         setCryptoMetrics(null);
@@ -293,7 +302,7 @@ function App() {
           />
         )}
 
-        <Chart cryptoData={historicalCryptoData} />
+        <Chart cryptoData={cryptoGraphData} />
       </div>
     </Router>
   );
