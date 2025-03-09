@@ -53,7 +53,7 @@ class MetricMeasurement(Base):
     value = Column(Float, nullable=False)  
     type_id = Column(Integer, ForeignKey('metric_types.id'), nullable=False, index=True)
     unit_id = Column(Integer, ForeignKey('units.id'), nullable=False, index=True)  
-    timestamp_utc = Column(DateTime(timezone=True), nullable=False, server_default=func.now())  
+    timestamp_utc = Column(DateTime(timezone=True), index=True, nullable=False, server_default=func.now())  
     utc_offset = Column(Integer, nullable=False)  
 
     type = relationship("MetricType", back_populates="metric_measurements")
