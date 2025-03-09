@@ -41,29 +41,45 @@ class MetricsReporter:
             logger.error(f"Database connection failed: {str(e)}")
             return False
 
-    def get_latest_metrics(self, metric_type=None):
+    def get_latest_metrics(self, metric_type=None, page_number=1, page_size=20):
+        if page_number < 1:
+            page_number = 1
+        
         session = self.get_session()
         try:
-            # Get the most recent timestamp from the database
-            latest_timestamp = session.query(sa.func.max(MetricMeasurement.timestamp_utc)).scalar()
-            if not latest_timestamp:
-                logger.warning("No metrics found in the database.")
-                return []
-
-            ten_minutes_ago = latest_timestamp - timedelta(minutes=10)
-            logger.debug(f"Fetching metrics from the last 10 minutes based on the latest timestamp: {latest_timestamp.isoformat()}")
-
-            query = (
-                session.query(MetricMeasurement)
-                .options(joinedload(MetricMeasurement.device).joinedload(Device.details))
-                .filter(MetricMeasurement.timestamp_utc >= ten_minutes_ago)  # Filtering by time
-            )
-
+            # Get latest timestamp using a more efficient single query
+            query = session.query(MetricMeasurement)
+            
+            # Join tables eagerly to avoid N+1 query problems
+            query = query.options(joinedload(MetricMeasurement.device).joinedload(Device.details))
+            
+            # Apply ordering first to make the query more efficient
+            query = query.order_by(MetricMeasurement.timestamp_utc.desc())
+            
+            # Apply metric type filter if provided
             if metric_type:
                 query = query.filter(MetricMeasurement.type.has(name=metric_type))
-
-            metrics = query.order_by(MetricMeasurement.timestamp_utc.desc()).all()
-
+            
+            # Get the first result to determine latest timestamp
+            latest_metric = query.first()
+            if not latest_metric:
+                logger.warning("No metrics found in the database.")
+                return [], 0
+            
+            # Calculate time window based on latest timestamp
+            ten_minutes_ago = latest_metric.timestamp_utc - timedelta(minutes=10)
+            
+            # Apply time filter
+            query = query.filter(MetricMeasurement.timestamp_utc >= ten_minutes_ago)
+            
+            # Count total matching records first - this is more efficient than fetching extra records
+            total_count = query.count()
+            total_pages = (total_count + page_size - 1) // page_size  # Calculate total pages
+            
+            # Apply pagination
+            metrics = query.offset((page_number - 1) * page_size).limit(page_size).all()
+            
+            # Process results
             measurements = [
                 Measurement(
                     device_id=metric.device.device_id,
@@ -77,10 +93,10 @@ class MetricsReporter:
                 ).serialize()
                 for metric in metrics
             ]
-
-            logger.info(f"Retrieved {len(measurements)} metrics from the last 10 minutes")
-            return measurements
-
+            
+            logger.info(f"Retrieved {len(measurements)} metrics for page {page_number}")
+            return measurements, total_pages
+        
         except SQLAlchemyError as e:
             session.rollback()
             logger.error(f"Error fetching metrics: {str(e)}")

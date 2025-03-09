@@ -63,6 +63,8 @@ def get_latest_batch():
     logger.debug("Handling GET request to get-latest-metrics")
     try:
         metric_type = request.args.get('metric_type')
+        page_number = request.args.get('page_number', default=1, type=int)
+        
         if metric_type not in metrics_cache:
             return jsonify({'error': 'Invalid metric type'}), 400
 
@@ -81,13 +83,17 @@ def get_latest_batch():
                     return jsonify(cache.get_data()), 200
 
                 logger.info(f"Fetching new {metric_type} metrics data")
-                metrics = metrics_reporter.get_latest_metrics(metric_type)
+                metrics, total_pages = metrics_reporter.get_latest_metrics(metric_type=metric_type, page_number=page_number)
                 if not metrics:
                     return jsonify([]), 200
 
                 cache.update(metrics)
                 logger.info(f"Cache updated with new {metric_type} metrics data")
-                return jsonify(metrics), 200
+                total_pages = (len(metrics) + 19) // 20  # Calculate total pages with a fixed page size of 20
+                return jsonify({
+                    'metrics': metrics,
+                    'total_pages': total_pages
+                }), 200
     except Exception as e:
         logger.error(f"Error in get_latest_batch: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
