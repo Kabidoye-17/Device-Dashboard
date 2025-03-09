@@ -24,22 +24,32 @@ function App() {
   const toggleSystemTable = () => setShowSystemTable(!showSystemTable);
   const toggleCryptoTable = () => setShowCryptoTable(!showCryptoTable);
 
+  const formatData = (data) => {
+    data.map(item => ({
+      deviceName: item.device_name,
+      name: item.name,
+      value: item.value,
+      unit: item.unit,
+      timestamp_utc: item.timestamp_utc,
+      utc_offset: item.utc_offset,
+      type: item.type
+    }));
+  };
+
   const fetchSystemData = async () => {
     try {
       const response = await fetch(`${apiUrl}/api/metrics/get-latest-metrics?metric_type=system&page_number=${currentSystemPage + 1}`);
       const data = await response.json();
-      setTotalSystemPages(data.total_pages? data.total_pages : 0);
+      const allPaginatedData = data.metrics;
+      const latestMetrics = data.latest_metric;
+      const totalPages = data.total_pages;
 
-      if (data && data.metrics.length > 0) {
-        const formattedData = data.metrics.map(item => ({
-          deviceName: item.device_name,
-          name: item.name,
-          value: item.value,
-          unit: item.unit,
-          timestamp_utc: item.timestamp_utc,
-          utc_offset: item.utc_offset,
-          type: item.type
-        }));
+      setTotalSystemPages(totalPages? totalPages: 0);
+
+      if (allPaginatedData && allPaginatedDatalength > 0) {
+        const formattedPaginatedData = formatData(allPaginatedData);
+        const formattedLatestData = formatData(latestMetrics);
+
 
         const metricOrder = {
           'CPU Load': 1,
@@ -47,7 +57,7 @@ function App() {
           'Network Sent': 3
         };
 
-        const systemData = formattedData
+        const systemData = formattedPaginatedData
           .filter(item => item.type === 'system')
           .sort((a, b) => {
             const timeCompare = new Date(b.timestamp_utc) - new Date(a.timestamp_utc);
@@ -67,7 +77,7 @@ function App() {
         }
 
         setHistoricalSystemData(systemData);
-        setSystemMetrics(systemData.length > 0 ? systemData.slice(0, 3) : []);
+        setSystemMetrics(formattedLatestData);
       } else {
         setHistoricalSystemData([]);
         setSystemMetrics(null);
@@ -77,22 +87,21 @@ function App() {
     }
   };
 
+  
+
   const fetchCryptoData = async () => {
     try {
       const response = await fetch(`${apiUrl}/api/metrics/get-latest-metrics?metric_type=crypto&page_number=${currentCryptoPage + 1}`);
       const data = await response.json();
-      setTotalCryptoPages(data.total_pages? data.total_pages : 0);
+      const allPaginatedData = data.metrics;
+      const latestMetrics = data.latest_metric;
+      const totalPages = data.total_pages;
 
-      if (data && data.metrics.length > 0) {
-        const formattedData = data.metrics.map(item => ({
-          deviceName: item.device_name,
-          name: item.name,
-          value: item.value,
-          unit: item.unit,
-          timestamp_utc: item.timestamp_utc,
-          utc_offset: item.utc_offset,
-          type: item.type
-        }));
+      setTotalCryptoPages(totalPages? totalPages: 0);
+
+      if (allPaginatedData && allPaginatedData.length > 0) {
+        const formattedPaginatedData = formatData(allPaginatedData);
+        const formattedLatestData = formatData(latestMetrics);
 
         const cryptoOrder = {
           'ETH': 1,
@@ -105,7 +114,7 @@ function App() {
           'Bid': 3
         };
 
-        const cryptoData = formattedData
+        const cryptoData = formattedPaginatedData
           .filter(item => item.type === 'crypto')
           .sort((a, b) => {
             const timeCompare = new Date(b.timestamp_utc) - new Date(a.timestamp_utc);
@@ -125,7 +134,7 @@ function App() {
           });
 
         setHistoricalCryptoData(cryptoData);
-        setCryptoMetrics(cryptoData.length > 0 ? cryptoData.slice(0, 6) : []);
+        setCryptoMetrics(formattedLatestData);
       } else {
         setHistoricalCryptoData([]);
         setCryptoMetrics(null);
