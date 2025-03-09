@@ -1,3 +1,4 @@
+import dataclasses
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from utils.logger import get_logger, setup_logger
@@ -37,8 +38,9 @@ except Exception as e:
     logger.critical(f"Failed to initialize Metrics reporter: {str(e)}")
     raise
 
-# Initialize cache for metrics per type dynamically
-metrics_cache = {metric_type: CachedData(cache_duration_seconds=10) for metric_type in config.collector_types.values()}
+collector_types = config.collector_types
+collector_type_values = {field.name: getattr(collector_types, field.name) for field in dataclasses.fields(collector_types)}
+metrics_cache = {metric_type: CachedData(cache_duration_seconds=10) for metric_type in collector_type_values.values()}
 current_site = None
 
 @app.route('/api/metrics/upload-metrics', methods=['POST'])
