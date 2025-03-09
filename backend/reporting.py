@@ -60,7 +60,7 @@ class MetricsReporter:
             )
 
             if metric_type:
-                query = query.filter(MetricMeasurement.type == metric_type)
+                query = query.filter(MetricMeasurement.type.has(name=metric_type))
 
             metrics = query.order_by(MetricMeasurement.timestamp_utc.desc()).all()
 
