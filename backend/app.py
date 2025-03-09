@@ -63,13 +63,20 @@ def get_latest_batch():
     logger.debug("Handling GET request to get-latest-metrics")
     try:
         metric_type = request.args.get('metric_type')
-        page_number = int(request.args.get('page_number', 1))
+        
+        # Make sure to convert to int and provide default value
+        try:
+            page_number = int(request.args.get('page_number', 1))
+        except (ValueError, TypeError):
+            page_number = 1
+            
         page_size = 10  # Define fixed page size
+        
+        logger.debug(f"Request parameters: metric_type={metric_type}, page_number={page_number}")
         
         if metric_type not in metrics_cache:
             return jsonify({'error': 'Invalid metric type'}), 400
             
-        logger.debug(f"Received metric_type: {metric_type}, page_number: {page_number}")
         cache = metrics_cache[metric_type]
         
         with cache:
@@ -86,27 +93,33 @@ def get_latest_batch():
                         logger.info(f"Fetching new {metric_type} metrics data")
                         all_data = metrics_reporter.get_all_latest_metrics(metric_type=metric_type)
                         if not all_data:
-                            return jsonify({'latest_metric': None, 'metrics': [], 'total_pages': 0}), 200
+                            return jsonify({'latest_metric': None, 'metrics': [], 'total_pages': 0, 'current_page': 1}), 200
                         
                         cache.update(all_data)
                         logger.info(f"Cache updated with {len(all_data)} {metric_type} metrics")
         
-        # Get the latest metric (first item in the list)
-        latest_metric = all_data[0] if all_data else None
+        # Get the latest metric safely
+        latest_metric = all_data[0][0] if all_data and len(all_data) > 0 and len(all_data[0]) > 0 else None
         
         # Apply pagination to the historical metrics
         total_count = len(all_data)
         total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        
+        logger.debug(f"Pagination calculation: total_count={total_count}, total_pages={total_pages}, requested_page={page_number}")
         
         # Ensure page_number is valid
         if page_number < 1:
             page_number = 1
         if page_number > total_pages and total_pages > 0:
             page_number = total_pages
+            
+        logger.debug(f"Adjusted page_number={page_number}")
         
         # Calculate slice indices
         start_idx = (page_number - 1) * page_size
         end_idx = min(start_idx + page_size, total_count)
+        
+        logger.debug(f"Slice indices: start_idx={start_idx}, end_idx={end_idx}")
         
         # Slice the data for the requested page
         page_data = all_data[start_idx:end_idx] if start_idx < total_count else []
@@ -120,9 +133,9 @@ def get_latest_batch():
         }), 200
         
     except Exception as e:
-        logger.error(f"Error in get_latest_metrics: {str(e)}", exc_info=True)
+        logger.error(f"Error in get_latest_batch: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
-
+    
 # Add a test route to verify the application is running
 @app.route('/', methods=['GET'])
 def health_check():
