@@ -131,6 +131,7 @@ const Table = ({ data, columns, formatTimestamp, getSymbolFromCurrency, currentP
         <PaginationButton onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 0}>
           Previous
         </PaginationButton>
+        <span>Page {currentPage + 1} of {totalPages}</span>
         <PaginationButton onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= totalPages - 1 || totalPages === 0}>
           Next
         </PaginationButton>

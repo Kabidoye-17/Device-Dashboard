@@ -25,7 +25,11 @@ function App() {
   const toggleCryptoTable = () => setShowCryptoTable(!showCryptoTable);
 
   const formatData = (data) => {
-    data.map(item => ({
+    if (!Array.isArray(data)) {
+      console.error('Expected data to be an array, but got:', data);
+      return [];
+    }
+    return data.map(item => ({
       deviceName: item.device_name,
       name: item.name,
       value: item.value,
@@ -44,12 +48,11 @@ function App() {
       const latestMetrics = data.latest_metric;
       const totalPages = data.total_pages;
 
-      setTotalSystemPages(totalPages? totalPages: 0);
+      setTotalSystemPages(totalPages ? totalPages : 0);
 
       if (allPaginatedData && allPaginatedData.length > 0) {
         const formattedPaginatedData = formatData(allPaginatedData);
         const formattedLatestData = formatData(latestMetrics);
-
 
         const metricOrder = {
           'CPU Load': 1,
@@ -65,12 +68,12 @@ function App() {
             return metricOrder[a.name] - metricOrder[b.name];
           });
 
-        const firstPercentageMetric = systemData.find(metric => metric.unit === '%');
+        const firstPercentageMetric = formattedLatestData.find(metric => metric.unit === '%');
         if (!selectedMetricName && firstPercentageMetric) {
           setSelectedMetricValue(firstPercentageMetric.value);
           setSelectedMetricName(firstPercentageMetric.name);
         } else if (selectedMetricName) {
-          const updatedMetric = systemData.find(metric => metric.name === selectedMetricName);
+          const updatedMetric = formattedLatestData.find(metric => metric.name === selectedMetricName);
           if (updatedMetric) {
             setSelectedMetricValue(updatedMetric.value);
           }
@@ -87,8 +90,6 @@ function App() {
     }
   };
 
-  
-
   const fetchCryptoData = async () => {
     try {
       const response = await fetch(`${apiUrl}/api/metrics/get-latest-metrics?metric_type=crypto&page_number=${currentCryptoPage + 1}`);
@@ -97,7 +98,7 @@ function App() {
       const latestMetrics = data.latest_metric;
       const totalPages = data.total_pages;
 
-      setTotalCryptoPages(totalPages? totalPages: 0);
+      setTotalCryptoPages(totalPages ? totalPages : 0);
 
       if (allPaginatedData && allPaginatedData.length > 0) {
         const formattedPaginatedData = formatData(allPaginatedData);
@@ -132,6 +133,17 @@ function App() {
 
             return cryptoMetricOrder[metricA] - cryptoMetricOrder[metricB];
           });
+
+        const firstPercentageMetric = formattedLatestData.find(metric => metric.unit === '%');
+        if (!selectedMetricName && firstPercentageMetric) {
+          setSelectedMetricValue(firstPercentageMetric.value);
+          setSelectedMetricName(firstPercentageMetric.name);
+        } else if (selectedMetricName) {
+          const updatedMetric = formattedLatestData.find(metric => metric.name === selectedMetricName);
+          if (updatedMetric) {
+            setSelectedMetricValue(updatedMetric.value);
+          }
+        }
 
         setHistoricalCryptoData(cryptoData);
         setCryptoMetrics(formattedLatestData);
