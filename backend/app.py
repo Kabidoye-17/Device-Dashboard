@@ -40,7 +40,7 @@ except Exception as e:
 
 collector_types = config.collector_types
 collector_type_values = {field.name: getattr(collector_types, field.name) for field in dataclasses.fields(collector_types)}
-metrics_cache = {metric_type: CachedData(cache_duration_seconds=10) for metric_type in collector_type_values.values()}
+metrics_cache = {metric_type: CachedData(cache_duration_seconds=30) for metric_type in collector_type_values.values()}
 current_site = None
 
 @app.route('/api/metrics/upload-metrics', methods=['POST'])
@@ -63,37 +63,58 @@ def get_latest_batch():
     logger.debug("Handling GET request to get-latest-metrics")
     try:
         metric_type = request.args.get('metric_type')
-        page_number = request.args.get('page_number', default=1, type=int)
+        page_number = int(request.args.get('page_number', 1))
+        page_size = 20  # Define fixed page size
         
         if metric_type not in metrics_cache:
             return jsonify({'error': 'Invalid metric type'}), 400
 
-        logger.debug(f"Received metric_type: {metric_type}")
+        logger.debug(f"Received metric_type: {metric_type}, page_number: {page_number}")
         cache = metrics_cache[metric_type]
 
         with cache:
             if not cache.is_expired():
                 logger.info(f"Serving {metric_type} metrics from cache")
-                return jsonify(cache.get_data()), 200
-
-            with CacheUpdateManager(cache) as manager:
-                if manager.update_started_elsewhere():
-                    logger.info(f"Waiting for another thread to update the {metric_type} cache")
-                    manager.spin_wait_for_update_to_complete()
-                    return jsonify(cache.get_data()), 200
-
-                logger.info(f"Fetching new {metric_type} metrics data")
-                metrics, total_pages = metrics_reporter.get_latest_metrics(metric_type=metric_type, page_number=page_number)
-                if not metrics:
-                    return jsonify([]), 200
-
-                cache.update(metrics)
-                logger.info(f"Cache updated with new {metric_type} metrics data")
-                total_pages = (len(metrics) + 19) // 20  # Calculate total pages with a fixed page size of 20
-                return jsonify({
-                    'metrics': metrics,
-                    'total_pages': total_pages
-                }), 200
+                all_data = cache.get_data()
+            else:
+                with CacheUpdateManager(cache) as manager:
+                    if manager.update_started_elsewhere():
+                        logger.info(f"Waiting for another thread to update the {metric_type} cache")
+                        manager.spin_wait_for_update_to_complete()
+                        all_data = cache.get_data()
+                    else:
+                        logger.info(f"Fetching new {metric_type} metrics data")
+                        all_data, _ = metrics_reporter.get_all_latest_metrics(metric_type=metric_type)
+                        if not all_data:
+                            return jsonify({'metrics': [], 'total_pages': 0}), 200
+                        
+                        cache.update(all_data)
+                        logger.info(f"Cache updated with {len(all_data)} {metric_type} metrics")
+            
+            # Apply pagination to the cached data
+            total_count = len(all_data)
+            total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+            
+            # Ensure page_number is valid
+            if page_number < 1:
+                page_number = 1
+            if page_number > total_pages and total_pages > 0:
+                page_number = total_pages
+            
+            # Calculate slice indices
+            start_idx = (page_number - 1) * page_size
+            end_idx = min(start_idx + page_size, total_count)
+            
+            # Slice the data for the requested page
+            page_data = all_data[start_idx:end_idx] if start_idx < total_count else []
+            
+            logger.info(f"Serving page {page_number} of {total_pages} for {metric_type} metrics")
+            return jsonify({
+                'metrics': page_data,
+                'total_pages': total_pages,
+                'current_page': page_number
+            }), 200
+            
     except Exception as e:
         logger.error(f"Error in get_latest_batch: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500

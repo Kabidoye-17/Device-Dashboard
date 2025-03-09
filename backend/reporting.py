@@ -41,10 +41,7 @@ class MetricsReporter:
             logger.error(f"Database connection failed: {str(e)}")
             return False
 
-    def get_latest_metrics(self, metric_type=None, page_number=1, page_size=5):
-        if page_number < 1:
-            page_number = 1
-        
+    def get_all_latest_metrics(self, metric_type=None):
         session = self.get_session()
         try:
             # Build the base query with eager loading
@@ -70,12 +67,8 @@ class MetricsReporter:
             # Apply the time filter to the query
             query = query.filter(MetricMeasurement.timestamp_utc >= ten_minutes_ago)
             
-            # Count total matching records
-            total_count = query.count()
-            total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
-            
-            # Apply pagination
-            metrics = query.offset((page_number - 1) * page_size).limit(page_size).all()
+            # Get all metrics without pagination
+            metrics = query.all()
             
             # Process results
             measurements = [
@@ -92,8 +85,9 @@ class MetricsReporter:
                 for metric in metrics
             ]
             
-            logger.info(f"Retrieved {len(measurements)} metrics for page {page_number} of {total_pages}")
-            return measurements, total_pages
+            total_count = len(measurements)
+            logger.info(f"Retrieved all {total_count} metrics for the last 10 minutes")
+            return measurements, total_count
         
         except SQLAlchemyError as e:
             session.rollback()
