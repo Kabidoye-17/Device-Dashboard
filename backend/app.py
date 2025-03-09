@@ -37,8 +37,8 @@ except Exception as e:
     logger.critical(f"Failed to initialize Metrics reporter: {str(e)}")
     raise
 
-# Initialize cache for metrics
-metrics_cache = CachedData(cache_duration_seconds=10)  # Changed from 30 to 10 seconds
+# Initialize cache for metrics per type dynamically
+metrics_cache = {metric_type: CachedData(cache_duration_seconds=10) for metric_type in config.collector_types.values()}
 current_site = None
 
 @app.route('/api/metrics/upload-metrics', methods=['POST'])
@@ -61,26 +61,30 @@ def get_latest_batch():
     logger.debug("Handling GET request to get-latest-metrics")
     try:
         metric_type = request.args.get('metric_type')
+        if metric_type not in metrics_cache:
+            return jsonify({'error': 'Invalid metric type'}), 400
+
         logger.debug(f"Received metric_type: {metric_type}")
+        cache = metrics_cache[metric_type]
 
-        with metrics_cache:
-            if not metrics_cache.is_expired():
-                logger.info("Serving metrics from cache")
-                return jsonify(metrics_cache.get_data()), 200
+        with cache:
+            if not cache.is_expired():
+                logger.info(f"Serving {metric_type} metrics from cache")
+                return jsonify(cache.get_data()), 200
 
-            with CacheUpdateManager(metrics_cache) as manager:
+            with CacheUpdateManager(cache) as manager:
                 if manager.update_started_elsewhere():
-                    logger.info("Waiting for another thread to update the cache")
+                    logger.info(f"Waiting for another thread to update the {metric_type} cache")
                     manager.spin_wait_for_update_to_complete()
-                    return jsonify(metrics_cache.get_data()), 200
+                    return jsonify(cache.get_data()), 200
 
-                logger.info("Fetching new metrics data")
+                logger.info(f"Fetching new {metric_type} metrics data")
                 metrics = metrics_reporter.get_latest_metrics(metric_type)
                 if not metrics:
                     return jsonify([]), 200
 
-                metrics_cache.update(metrics)
-                logger.info("Cache updated with new metrics data")
+                cache.update(metrics)
+                logger.info(f"Cache updated with new {metric_type} metrics data")
                 return jsonify(metrics), 200
     except Exception as e:
         logger.error(f"Error in get_latest_batch: {str(e)}", exc_info=True)
