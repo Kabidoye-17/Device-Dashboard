@@ -47,34 +47,32 @@ class MetricsReporter:
         
         session = self.get_session()
         try:
-            # Get latest timestamp using a more efficient single query
+            # Build the base query with eager loading
             query = session.query(MetricMeasurement)
-            
-            # Join tables eagerly to avoid N+1 query problems
             query = query.options(joinedload(MetricMeasurement.device).joinedload(Device.details))
             
-            # Apply ordering first to make the query more efficient
+            # Apply ordering
             query = query.order_by(MetricMeasurement.timestamp_utc.desc())
             
             # Apply metric type filter if provided
             if metric_type:
                 query = query.filter(MetricMeasurement.type.has(name=metric_type))
             
-            # Get the first result to determine latest timestamp
-            latest_metric = query.first()
-            if not latest_metric:
+            # First check if we have any data
+            if query.first() is None:
                 logger.warning("No metrics found in the database.")
                 return [], 0
+                
+            # Get the latest timestamp for the 10-minute window
+            latest_timestamp = session.query(sa.func.max(MetricMeasurement.timestamp_utc)).scalar()
+            ten_minutes_ago = latest_timestamp - timedelta(minutes=10)
             
-            # Calculate time window based on latest timestamp
-            ten_minutes_ago = latest_metric.timestamp_utc - timedelta(minutes=10)
-            
-            # Apply time filter
+            # Apply the time filter to the query
             query = query.filter(MetricMeasurement.timestamp_utc >= ten_minutes_ago)
             
-            # Count total matching records first - this is more efficient than fetching extra records
+            # Count total matching records
             total_count = query.count()
-            total_pages = (total_count + page_size - 1) // page_size  # Calculate total pages
+            total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
             
             # Apply pagination
             metrics = query.offset((page_number - 1) * page_size).limit(page_size).all()
@@ -94,7 +92,7 @@ class MetricsReporter:
                 for metric in metrics
             ]
             
-            logger.info(f"Retrieved {len(measurements)} metrics for page {page_number}")
+            logger.info(f"Retrieved {len(measurements)} metrics for page {page_number} of {total_pages}")
             return measurements, total_pages
         
         except SQLAlchemyError as e:
@@ -103,6 +101,5 @@ class MetricsReporter:
             raise
         finally:
             self.cleanup_session(session)
-
     def __del__(self):
         self.Session.remove()
