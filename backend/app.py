@@ -64,7 +64,6 @@ def get_latest_batch():
     try:
         metric_type = request.args.get('metric_type')
         
-        # Make sure to convert to int and provide default value
         try:
             page_number = int(request.args.get('page_number', 1))
         except (ValueError, TypeError):
@@ -72,11 +71,10 @@ def get_latest_batch():
             
         page_size = 10  # Define fixed page size
         
-        logger.debug(f"Request parameters: metric_type={metric_type}, page_number={page_number}")
-        
         if metric_type not in metrics_cache:
             return jsonify({'error': 'Invalid metric type'}), 400
             
+        logger.debug(f"Received metric_type: {metric_type}, page_number: {page_number}")
         cache = metrics_cache[metric_type]
         
         with cache:
@@ -98,36 +96,35 @@ def get_latest_batch():
                         cache.update(all_data)
                         logger.info(f"Cache updated with {len(all_data)} {metric_type} metrics")
         
-        # Get the latest metric safely
+        # Get the latest metric (from first batch)
         latest_metric = all_data[0][0] if all_data and len(all_data) > 0 and len(all_data[0]) > 0 else None
         
-        # Apply pagination to the historical metrics
-        total_count = len(all_data)
-        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+        # Flatten the metrics for pagination
+        flattened_metrics = []
+        for batch in all_data:
+            flattened_metrics.extend(batch)
         
-        logger.debug(f"Pagination calculation: total_count={total_count}, total_pages={total_pages}, requested_page={page_number}")
+        # Apply pagination to the flattened metrics
+        total_count = len(flattened_metrics)
+        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
         
         # Ensure page_number is valid
         if page_number < 1:
             page_number = 1
         if page_number > total_pages and total_pages > 0:
             page_number = total_pages
-            
-        logger.debug(f"Adjusted page_number={page_number}")
         
-        # Calculate slice indices
+        # Calculate slice indices for the flattened list
         start_idx = (page_number - 1) * page_size
         end_idx = min(start_idx + page_size, total_count)
         
-        logger.debug(f"Slice indices: start_idx={start_idx}, end_idx={end_idx}")
-        
-        # Slice the data for the requested page
-        page_data = all_data[start_idx:end_idx] if start_idx < total_count else []
+        # Slice the flattened data for the requested page
+        page_data = flattened_metrics[start_idx:end_idx] if start_idx < total_count else []
         
         logger.info(f"Serving page {page_number} of {total_pages} for {metric_type} metrics")
         return jsonify({
             'latest_metric': latest_metric,
-            'metrics': page_data,
+            'metrics': page_data,  # Now a single array of metrics
             'total_pages': total_pages,
             'current_page': page_number
         }), 200
