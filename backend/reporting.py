@@ -41,7 +41,7 @@ class MetricsReporter:
             logger.error(f"Database connection failed: {str(e)}")
             return False
 
-    def get_latest_metrics(self):
+    def get_latest_metrics(self, metric_type=None):
         session = self.get_session()
         try:
             # Get the most recent timestamp from the database
@@ -53,13 +53,16 @@ class MetricsReporter:
             ten_minutes_ago = latest_timestamp - timedelta(minutes=10)
             logger.debug(f"Fetching metrics from the last 10 minutes based on the latest timestamp: {latest_timestamp.isoformat()}")
 
-            metrics = (
+            query = (
                 session.query(MetricMeasurement)
                 .options(joinedload(MetricMeasurement.device).joinedload(Device.details))
                 .filter(MetricMeasurement.timestamp_utc >= ten_minutes_ago)  # Filtering by time
-                .order_by(MetricMeasurement.timestamp_utc.desc())  # Most recent first
-                .all()
             )
+
+            if metric_type:
+                query = query.filter(MetricMeasurement.type == metric_type)
+
+            metrics = query.order_by(MetricMeasurement.timestamp_utc.desc()).all()
 
             measurements = [
                 Measurement(

@@ -98,9 +98,9 @@ function App() {
   const toggleCryptoTable = () => setShowCryptoTable(!showCryptoTable)
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchData = async (metricType) => {
       try {
-        const response = await fetch(`${apiUrl}/api/metrics/get-latest-metrics`);
+        const response = await fetch(`${apiUrl}/api/metrics/get-latest-metrics?metric_type=${metricType}`);
         const data = await response.json();
         
         if (data && data.length > 0) {
@@ -131,70 +131,81 @@ function App() {
             'Bid': 3
           };
   
-          // Sort system data by timestamp and metric order
-          const systemData = formattedData
-            .filter(item => item.type === 'system')
-            .sort((a, b) => {
-              // First compare timestamps (newest first)
-              const timeCompare = new Date(b.timestamp_utc) - new Date(a.timestamp_utc);
-              if (timeCompare !== 0) return timeCompare;
-              // If same timestamp, sort by metric order
-              return metricOrder[a.name] - metricOrder[b.name];
-            });
+          if (metricType === 'system') {
+            // Sort system data by timestamp and metric order
+            const systemData = formattedData
+              .filter(item => item.type === 'system')
+              .sort((a, b) => {
+                // First compare timestamps (newest first)
+                const timeCompare = new Date(b.timestamp_utc) - new Date(a.timestamp_utc);
+                if (timeCompare !== 0) return timeCompare;
+                // If same timestamp, sort by metric order
+                return metricOrder[a.name] - metricOrder[b.name];
+              });
 
-          // Set default selected metric value to the first percentage metric
-          const firstPercentageMetric = systemData.find(metric => metric.unit === '%');
-          if (!selectedMetricName && firstPercentageMetric) {
-            setSelectedMetricValue(firstPercentageMetric.value);
-            setSelectedMetricName(firstPercentageMetric.name);
-          } else if (selectedMetricName) {
-            const updatedMetric = systemData.find(metric => metric.name === selectedMetricName);
-            if (updatedMetric) {
-              setSelectedMetricValue(updatedMetric.value);
+            // Set default selected metric value to the first percentage metric
+            const firstPercentageMetric = systemData.find(metric => metric.unit === '%');
+            if (!selectedMetricName && firstPercentageMetric) {
+              setSelectedMetricValue(firstPercentageMetric.value);
+              setSelectedMetricName(firstPercentageMetric.name);
+            } else if (selectedMetricName) {
+              const updatedMetric = systemData.find(metric => metric.name === selectedMetricName);
+              if (updatedMetric) {
+                setSelectedMetricValue(updatedMetric.value);
+              }
             }
+
+            setHistoricalSystemData(systemData);
+            setSystemMetrics(systemData.length > 0 ? systemData.slice(0, 3) : []);
+          } else if (metricType === 'crypto') {
+            // Sort crypto data
+            const cryptoData = formattedData
+              .filter(item => item.type === 'crypto')
+              .sort((a, b) => {
+                // First compare timestamps (newest first)
+                const timeCompare = new Date(b.timestamp_utc) - new Date(a.timestamp_utc);
+                if (timeCompare !== 0) return timeCompare;
+                
+                // Extract currency from name (ETH or BTC)
+                const currencyA = a.name.split('-')[0];
+                const currencyB = b.name.split('-')[0];
+                
+                // Compare currencies first (ETH vs BTC)
+                if (currencyA !== currencyB) {
+                  return cryptoOrder[currencyA] - cryptoOrder[currencyB];
+                }
+                
+                // Extract metric type (Price, Ask, Bid)
+                const metricA = a.name.split(' ')[1];
+                const metricB = b.name.split(' ')[1];
+                
+                // Compare metric types
+                return cryptoMetricOrder[metricA] - cryptoMetricOrder[metricB];
+              });
+
+            setHistoricalCryptoData(cryptoData);
+            setCryptoMetrics(cryptoData.length > 0 ? cryptoData.slice(0, 6) : []);
           }
-
-          // Sort crypto data
-          const cryptoData = formattedData
-          .filter(item => item.type === 'crypto')
-          .sort((a, b) => {
-            // First compare timestamps (newest first)
-            const timeCompare = new Date(b.timestamp_utc) - new Date(a.timestamp_utc);
-            if (timeCompare !== 0) return timeCompare;
-            
-            // Extract currency from name (ETH or BTC)
-            const currencyA = a.name.split('-')[0];
-            const currencyB = b.name.split('-')[0];
-            
-            // Compare currencies first (ETH vs BTC)
-            if (currencyA !== currencyB) {
-              return cryptoOrder[currencyA] - cryptoOrder[currencyB];
-            }
-            
-            // Extract metric type (Price, Ask, Bid)
-            const metricA = a.name.split(' ')[1];
-            const metricB = b.name.split(' ')[1];
-            
-            // Compare metric types
-            return cryptoMetricOrder[metricA] - cryptoMetricOrder[metricB];
-          });
-          setHistoricalSystemData(systemData);
-          
-          setSystemMetrics(systemData.length > 0 ? systemData.slice(0, 3) : []);
-          setHistoricalCryptoData(cryptoData);
-          setCryptoMetrics(cryptoData.length > 0 ? cryptoData.slice(0,6) : []);
         } else {
-          setHistoricalSystemData([]);
-          setSystemMetrics(null);
-          setHistoricalCryptoData([]);
-          setCryptoMetrics(null);
+          if (metricType === 'system') {
+            setHistoricalSystemData([]);
+            setSystemMetrics(null);
+          } else if (metricType === 'crypto') {
+            setHistoricalCryptoData([]);
+            setCryptoMetrics(null);
+          }
         }
       } catch (error) {
-        console.error('Error fetching metrics:', error);
+        console.error(`Error fetching ${metricType} metrics:`, error);
       }
     };
-    fetchData();
-    const intervalId = setInterval(fetchData, 5000); // Fetch every 5 seconds
+
+    fetchData('system');
+    fetchData('crypto');
+    const intervalId = setInterval(() => {
+      fetchData('system');
+      fetchData('crypto');
+    }, 5000); // Fetch every 5 seconds
 
     return () => clearInterval(intervalId);
   }, [selectedMetricName]);

@@ -60,6 +60,9 @@ def handle_metrics():
 def get_latest_batch():
     logger.debug("Handling GET request to get-latest-metrics")
     try:
+        metric_type = request.args.get('metric_type')
+        logger.debug(f"Received metric_type: {metric_type}")
+
         with metrics_cache:
             if not metrics_cache.is_expired():
                 logger.info("Serving metrics from cache")
@@ -72,7 +75,7 @@ def get_latest_batch():
                     return jsonify(metrics_cache.get_data()), 200
 
                 logger.info("Fetching new metrics data")
-                metrics = metrics_reporter.get_latest_metrics()
+                metrics = metrics_reporter.get_latest_metrics(metric_type)
                 if not metrics:
                     return jsonify([]), 200
 
