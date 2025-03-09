@@ -46,7 +46,7 @@ function App() {
 
       setTotalSystemPages(totalPages? totalPages: 0);
 
-      if (allPaginatedData && allPaginatedDatalength > 0) {
+      if (allPaginatedData && allPaginatedData.length > 0) {
         const formattedPaginatedData = formatData(allPaginatedData);
         const formattedLatestData = formatData(latestMetrics);
 
