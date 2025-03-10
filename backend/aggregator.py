@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SQLAlchemyError
 from models.db_models import Base, Device, MetricType, Unit, MetricMeasurement, DeviceDetails
@@ -11,135 +11,130 @@ class DatabaseAggregator:
     def __init__(self, connection_string):
         try:
             logger.info("Initializing database connection...")
-            self.engine = create_engine(connection_string, pool_recycle=280)  # Add pool_recycle for MySQL
+            self.engine = create_engine(connection_string, pool_recycle=280)
             self.Session = scoped_session(sessionmaker(bind=self.engine))
-            Base.metadata.create_all(self.engine)
+
+            inspector = inspect(self.engine)
+            if not inspector.get_table_names():
+                Base.metadata.create_all(self.engine)
+                logger.info("Database tables created successfully")
+            else:
+                logger.info("Database tables already exist")
+
             logger.info("Database connection established successfully")
         except SQLAlchemyError as e:
             logger.error(f"Failed to initialize database: {str(e)}")
             raise
+
+    def __enter__(self):
+        self.session = self.get_session()
+        return self.session
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            if exc_type:
+                self.session.rollback()
+            else:
+                self.session.commit()
+        finally:
+            self.cleanup_session(self.session)
 
     def get_session(self):
         return self.Session()
 
     def cleanup_session(self, session):
         try:
-            session.close()
             self.Session.remove()
         except Exception as e:
             logger.error(f"Error cleaning up session: {str(e)}")
 
-    def verify_connection(self):
-        """Verify database connection is working"""
-        try:
-            with self.engine.connect() as conn:
-                conn.execute(sa.text('SELECT 1'))
-            return True
-        except SQLAlchemyError as e:
-            logger.error(f"Database connection failed: {str(e)}")
-            return False
+    def get_or_create(self, session, model, filter_by, defaults={}, cache=None):
+        if cache is not None:
+            cache_key = tuple(sorted(filter_by.items()))  # Ensuring consistent order
+            if cache_key in cache:
+                return cache[cache_key]
 
-    def get_or_create(self, model, filter_by, defaults={}):
-        session = self.get_session()
         try:
             instance = session.query(model).filter_by(**filter_by).first()
             if instance:
-                return instance  
-            
-            # Create new instance with filter criteria and defaults
+                return instance
+
             instance = model(**filter_by, **defaults)
             session.add(instance)
-            session.commit()
+            session.flush()  # Ensures instance is persisted before returning
             logger.debug(f"Created new {model.__name__}: {filter_by} {defaults}")
+            
+            if cache is not None:
+                cache[cache_key] = instance
             return instance
         except SQLAlchemyError as e:
             session.rollback()
             logger.error(f"Error in get_or_create for {model.__name__}: {str(e)}")
             raise
-        finally:
-            session.expunge(instance)  # Ensures instance is still usable
-            self.cleanup_session(session)
 
     def store_metrics(self, metrics_data):
-        session = self.get_session()
+        with self as session:
+            try:
+                logger.info(f"Storing {len(metrics_data)} metrics")
+
+                metric_type_cache = {}
+                unit_cache = {}
+                device_cache = {}
+                device_details_cache = {}
+                measurements = []
+
+                for metric in metrics_data:
+                    logger.debug(f"Processing metric: {metric.get('name', 'Unknown')}, Value: {metric.get('value', 'N/A')}")
+                    
+                    metric_value = self._validate_metric_value(metric)
+                    if metric_value is None:
+                        continue
+
+                    metric_type = self._get_or_create_cached(session, MetricType, {"name": str(metric.get("type", "system"))}, metric_type_cache)
+                    unit = self._get_or_create_cached(session, Unit, {"unit_name": str(metric.get("unit", "unknown"))}, unit_cache)
+                    device = self._get_or_create_cached(session, Device, {"device_id": str(metric.get("device_id", "unknown"))}, device_cache)
+                    
+                    self._get_or_create_cached(session, DeviceDetails, {"device_id": device.device_id}, device_details_cache,
+                        defaults={"device_name": str(metric.get("device_name", "unknown"))})
+
+                    measurements.append(self._prepare_measurement(metric, device, metric_type, unit, metric_value))
+
+                self._bulk_insert_measurements(session, measurements)
+                return True
+
+            except Exception as e:
+                session.rollback()
+                logger.error(f"Error storing metrics: {str(e)}")
+                raise
+
+    def _validate_metric_value(self, metric):
         try:
-            logger.info(f"Storing {len(metrics_data)} metrics")
+            return float(metric['value'])
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid metric value: {metric.get('value')}. Skipping.")
+            return None
 
-            metric_type_cache = {}
-            unit_cache = {}
-            device_cache = {}
-            device_details_cache = {}
+    def _get_or_create_cached(self, session, model, filter_by, cache, defaults={}):
+        return self.get_or_create(session, model, filter_by, defaults, cache)
 
-            measurements = []
+    def _prepare_measurement(self, metric, device, metric_type, unit, metric_value):
+        return MetricMeasurement(
+            device_id=device.device_id,
+            name=str(metric["name"]),
+            value=metric_value,
+            type_id=metric_type.id,
+            unit_id=unit.id,
+            timestamp_utc=metric.get("timestamp_utc"),
+            utc_offset=metric.get("utc_offset")
+        )
 
-            for metric in metrics_data:
-                logger.debug(f"Processing metric: {metric}")
-
-                # Ensure metric value is valid
-                try:
-                    metric_value = float(metric['value'])
-                except (ValueError, TypeError):
-                    logger.warning(f"Invalid metric value: {metric.get('value')}. Skipping.")
-                    continue
-
-                # Get or create MetricType (cache results to minimize queries)
-                metric_type_name = str(metric.get("type", "system"))
-                if metric_type_name not in metric_type_cache:
-                    metric_type_cache[metric_type_name] = self.get_or_create(
-                        MetricType, filter_by={"name": metric_type_name}
-                    )
-                metric_type = metric_type_cache[metric_type_name]
-
-                # Get or create Unit (cache results)
-                unit_name = str(metric.get("unit", "unknown"))
-                if unit_name not in unit_cache:
-                    unit_cache[unit_name] = self.get_or_create(Unit, filter_by={"unit_name": unit_name})
-                unit = unit_cache[unit_name]
-
-                # Get or create Device (cache results)
-                device_id = str(metric.get("device_id", "unknown"))
-                if device_id not in device_cache:
-                    device_cache[device_id] = self.get_or_create(
-                        Device,
-                        filter_by={"device_id": device_id},
-                        defaults={"device_name": str(metric.get("device_name", "unknown"))}
-                    )
-                device = device_cache[device_id]
-
-                # Handle DeviceDetails (if not already cached or created)
-                device_name = str(metric.get("device_name", "unknown"))
-                if device_id not in device_details_cache:
-                    device_details_cache[device_id] = self.get_or_create(
-                        DeviceDetails,
-                        filter_by={"device_id": device_id},
-                        defaults={"device_name": device_name}
-                    )
-                device_details = device_details_cache[device_id]
-
-                # Prepare metric measurement for bulk insert
-                measurements.append(
-                    MetricMeasurement(
-                        device_id=device.device_id,
-                        name=str(metric["name"]),
-                        value=metric_value,
-                        type_id=metric_type.id,
-                        unit_id=unit.id,
-                        timestamp_utc=metric.get("timestamp_utc"),
-                        utc_offset=metric.get("utc_offset")
-                    )
-                )
-
-            # Bulk insert metrics
-            if measurements:
+    def _bulk_insert_measurements(self, session, measurements):
+        if measurements:
+            try:
                 session.bulk_save_objects(measurements)
-
-            session.commit()
-            logger.info("Successfully stored all metrics")
-            return True
-
-        except Exception as e:
-            session.rollback()
-            logger.error(f"Error storing metrics: {str(e)}")
-            raise
-        finally:
-            self.cleanup_session(session)
+                session.commit()
+                logger.info("Successfully stored all metrics")
+            except SQLAlchemyError as e:
+                session.rollback()
+                logger.error(f"Bulk insert failed: {str(e)}")
+                raise

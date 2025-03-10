@@ -28,7 +28,15 @@ function App() {
   const toggleCryptoTable = () => setShowCryptoTable(!showCryptoTable);
 
   const handleDeviceChange = (event) => {
-    setSelectedDevice(event.target.value);
+    const newDevice = event.target.value;
+    setSelectedDevice(newDevice);
+
+    const deviceMetrics = systemMetrics.filter(metric => metric.deviceName === newDevice);
+    const firstPercentageMetric = deviceMetrics.find(metric => metric.unit === '%');
+    if (firstPercentageMetric) {
+      setSelectedMetricValue(firstPercentageMetric.value);
+      setSelectedMetricName(firstPercentageMetric.name);
+    }
   };
 
   const formatData = (data) => {

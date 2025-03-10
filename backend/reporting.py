@@ -21,6 +21,19 @@ class MetricsReporter:
             logger.error(f"Failed to initialize database: {str(e)}")
             raise
 
+    def __enter__(self):
+        self.session = self.get_session()
+        return self.session
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            if (exc_type):
+                self.session.rollback()
+            else:
+                self.session.commit()
+        finally:
+            self.cleanup_session(self.session)
+
     def get_session(self):
         return self.Session()
 
@@ -42,58 +55,61 @@ class MetricsReporter:
             return False
 
     def get_all_latest_metrics(self, metric_type=None):
-        session = self.get_session()
-        try:
-            # Build the base query with eager loading
-            query = session.query(MetricMeasurement)
-            query = query.options(joinedload(MetricMeasurement.device).joinedload(Device.details))
-            
-            # Apply ordering
-            query = query.order_by(MetricMeasurement.timestamp_utc.desc())
-            
-            # Apply metric type filter if provided
-            if metric_type:
-                query = query.filter(MetricMeasurement.type.has(name=metric_type))
-            
-            # First check if we have any data
-            if query.first() is None:
-                logger.warning("No metrics found in the database.")
-                return [], 0
+        with self as session:
+            try:
+                query = self._build_base_query(session, metric_type)
                 
-            # Get the latest timestamp for the 10-minute window
-            latest_timestamp = session.query(sa.func.max(MetricMeasurement.timestamp_utc)).scalar()
-            ten_minutes_ago = latest_timestamp - timedelta(minutes=10)
+                if not self._has_metrics(session, query):
+                    logger.warning("No metrics found in the database.")
+                    return [], 0
+
+                latest_timestamp = self._get_latest_timestamp(session)
+                if latest_timestamp is None:
+                    logger.warning("No metrics found in the database.")
+                    return [], 0
+
+                query = self._apply_time_filter(query, latest_timestamp)
+                metrics = query.all()
+                
+                measurements = self._convert_to_domain_models(metrics)
+                total_count = len(measurements)
+                logger.info(f"Retrieved all {total_count} metrics for the last 10 minutes")
+                return measurements, total_count
             
-            # Apply the time filter to the query
-            query = query.filter(MetricMeasurement.timestamp_utc >= ten_minutes_ago)
-            
-            # Get all metrics without pagination
-            metrics = query.all()
-            
-            # Process results
-            measurements = [
-                Measurement(
-                    device_id=metric.device.device_id,
-                    device_name=metric.device.details.device_name,
-                    name=metric.name,
-                    value=metric.value,
-                    type=metric.type.name,
-                    unit=metric.unit.unit_name,
-                    timestamp_utc=metric.timestamp_utc.isoformat(),
-                    utc_offset=metric.utc_offset,
-                ).serialize()
-                for metric in metrics
-            ]
-            
-            total_count = len(measurements)
-            logger.info(f"Retrieved all {total_count} metrics for the last 10 minutes")
-            return measurements, total_count
-        
-        except SQLAlchemyError as e:
-            session.rollback()
-            logger.error(f"Error fetching metrics: {str(e)}")
-            raise
-        finally:
-            self.cleanup_session(session)
-    def __del__(self):
-        self.Session.remove()
+            except SQLAlchemyError as e:
+                session.rollback()
+                logger.error(f"Error fetching metrics: {str(e)}")
+                raise
+
+    def _build_base_query(self, session, metric_type):
+        query = session.query(MetricMeasurement)
+        query = query.options(joinedload(MetricMeasurement.device).joinedload(Device.details))
+        query = query.order_by(MetricMeasurement.timestamp_utc.desc())
+        if metric_type:
+            query = query.filter(MetricMeasurement.type.has(name=metric_type))
+        return query
+
+    def _has_metrics(self, session, query):
+        return session.query(query.exists()).scalar()
+
+    def _get_latest_timestamp(self, session):
+        return session.query(sa.func.max(MetricMeasurement.timestamp_utc)).scalar()
+
+    def _apply_time_filter(self, query, latest_timestamp):
+        ten_minutes_ago = latest_timestamp - timedelta(minutes=10)
+        return query.filter(MetricMeasurement.timestamp_utc >= ten_minutes_ago)
+
+    def _convert_to_domain_models(self, metrics):
+        return [
+            Measurement(
+                device_id=metric.device.device_id,
+                device_name=metric.device.details.device_name,
+                name=metric.name,
+                value=metric.value,
+                type=metric.type.name,
+                unit=metric.unit.unit_name,
+                timestamp_utc=metric.timestamp_utc.isoformat(),
+                utc_offset=metric.utc_offset,
+            ).serialize()
+            for metric in metrics
+        ]

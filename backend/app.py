@@ -60,81 +60,143 @@ def handle_metrics():
 
 @app.route('/api/metrics/get-latest-metrics', methods=['GET'])
 def get_latest_batch():
+    """
+    Get latest metrics with pagination and caching support.
+    Query parameters:
+    - metric_type: Type of metrics to retrieve
+    - page_number: Page number for pagination (default: 1)
+    """
     logger.debug("Handling GET request to get-latest-metrics")
     try:
-        metric_type = request.args.get('metric_type')
-
-        try:
-            page_number = int(request.args.get('page_number', 1))
-        except (ValueError, TypeError):
-            page_number = 1
-
-        page_size = 10  # Define fixed page size
-
-        if metric_type not in metrics_cache:
+        # Validate and extract parameters
+        metric_type, page_number = _validate_metrics_request_params()
+        if not metric_type:
             return jsonify({'error': 'Invalid metric type'}), 400
 
-        logger.debug(f"Received metric_type: {metric_type}, page_number: {page_number}")
-        cache = metrics_cache[metric_type]
+        page_size = 10  # Fixed page size for pagination
+        logger.debug(f"Processing request for metric_type: {metric_type}, page_number: {page_number}")
 
-        with cache:
-            if not cache.is_expired():
-                logger.info(f"Serving {metric_type} metrics from cache")
-                all_data = cache.get_data()
-            else:
-                with CacheUpdateManager(cache) as manager:
-                    if manager.update_started_elsewhere():
-                        logger.info(f"Waiting for another thread to update the {metric_type} cache")
-                        manager.spin_wait_for_update_to_complete()
-                        all_data = cache.get_data()
-                    else:
-                        logger.info(f"Fetching new {metric_type} metrics data")
-                        all_data = metrics_reporter.get_all_latest_metrics(metric_type=metric_type)
-                        if not all_data:
-                            return jsonify({'latest_metric': None, 'metrics': [], 'total_pages': 0, 'current_page': 1}), 200
+        # Get metrics data (from cache or database)
+        metrics_data = _get_metrics_data(metric_type)
+        if not metrics_data:
+            return _create_empty_response(), 200
 
-                        cache.update(all_data)
-                        logger.info(f"Cache updated with {len(all_data)} {metric_type} metrics")
+        # Process the metrics data
+        latest_metrics = _extract_latest_metrics(metrics_data)
+        page_data, pagination_info = _paginate_metrics(metrics_data, page_number, page_size)
 
-        # Flatten the metrics for pagination
-        flattened_metrics = all_data[0] if all_data and len(all_data) > 0 else []
-        latest_metrics = None
-
-        # Find earliest timestamp and filter all matching metrics
-        if flattened_metrics:
-            earliest_timestamp = flattened_metrics[0]['timestamp_utc']
-            latest_metric = [m for m in flattened_metrics if m['timestamp_utc'] == earliest_timestamp]
-
-
-
-        # Apply pagination to the flattened metrics
-        total_count = len(flattened_metrics)
-        total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
-
-        # Ensure page_number is valid
-        if page_number < 1:
-            page_number = 1
-        if page_number > total_pages and total_pages > 0:
-            page_number = total_pages
-
-        # Calculate slice indices for the flattened list
-        start_idx = (page_number - 1) * page_size
-        end_idx = min(start_idx + page_size, total_count)
-
-        # Slice the flattened data for the requested page
-        page_data = flattened_metrics[start_idx:end_idx] if start_idx < total_count else []
-
-        logger.info(f"Serving page {page_number} of {total_pages} for {metric_type} metrics")
+        logger.info(f"Serving page {pagination_info['current_page']} of {pagination_info['total_pages']} for {metric_type} metrics")
         return jsonify({
-            'latest_metric': latest_metric,
-            'metrics': page_data,  # Now a single array of metrics
-            'total_pages': total_pages,
-            'current_page': page_number
+            'latest_metric': latest_metrics,
+            'metrics': page_data,
+            'total_pages': pagination_info['total_pages'],
+            'current_page': pagination_info['current_page']
         }), 200
 
     except Exception as e:
         logger.error(f"Error in get_latest_batch: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
+
+
+def _validate_metrics_request_params():
+    """
+    Validate and extract request parameters.
+    Returns tuple: (metric_type, page_number)
+    """
+    metric_type = request.args.get('metric_type')
+    if metric_type not in metrics_cache:
+        return None, None
+
+    try:
+        page_number = max(1, int(request.args.get('page_number', 1)))
+    except (ValueError, TypeError):
+        page_number = 1
+
+    return metric_type, page_number
+
+
+def _get_metrics_data(metric_type):
+    """
+    Get metrics data from cache or database.
+    Handles cache expiration and updates.
+    Returns the metrics data or None if no data is available.
+    """
+    cache = metrics_cache[metric_type]
+
+    with cache:
+        if cache.is_expired():
+            _update_cache_if_needed(cache, metric_type)
+        else:
+            logger.info(f"Serving {metric_type} metrics from cache")
+
+        all_data = cache.get_data()
+
+    # Return flattened metrics or None if no data
+    return all_data[0] if all_data and all_data[0] else None
+
+
+def _update_cache_if_needed(cache, metric_type):
+    """
+    Update the cache if needed and not already being updated by another thread.
+    """
+    with CacheUpdateManager(cache) as manager:
+        if not manager.update_started_elsewhere():
+            logger.info(f"Fetching new {metric_type} metrics data")
+            new_data = metrics_reporter.get_all_latest_metrics(metric_type=metric_type)
+            if new_data:
+                cache.update(new_data)
+                logger.info(f"Cache updated with {len(new_data)} {metric_type} metrics")
+        else:
+            logger.info(f"Waiting for another thread to update the {metric_type} cache")
+            manager.spin_wait_for_update_to_complete()
+
+
+def _extract_latest_metrics(metrics_data):
+    """
+    Extract the latest metrics for each device in a single pass.
+    Returns a list of the latest metrics for each device.
+    """
+    device_timestamps = {}
+    for metric in metrics_data:
+        device_name = metric['device_name']
+        timestamp = metric['timestamp_utc']
+        if device_name not in device_timestamps or timestamp > device_timestamps[device_name]:
+            device_timestamps[device_name] = timestamp
+
+    return [
+        metric for metric in metrics_data
+        if metric['timestamp_utc'] == device_timestamps[metric['device_name']]
+    ]
+
+
+def _paginate_metrics(metrics_data, page_number, page_size):
+    """
+    Paginate the metrics data.
+    Returns tuple: (page_data, pagination_info)
+    """
+    total_count = len(metrics_data)
+    total_pages = (total_count + page_size - 1) // page_size if total_count > 0 else 0
+    page_number = min(page_number, total_pages) if total_pages > 0 else 1
+
+    start_idx = (page_number - 1) * page_size
+    page_data = metrics_data[start_idx:start_idx + page_size] if start_idx < total_count else []
+
+    return page_data, {
+        'total_pages': total_pages,
+        'current_page': page_number
+    }
+
+
+def _create_empty_response():
+    """
+    Create an empty response when no metrics data is available.
+    """
+    return jsonify({
+        'latest_metric': [],
+        'metrics': [],
+        'total_pages': 0,
+        'current_page': 1
+    })
 
 # Add a test route to verify the application is running
 @app.route('/', methods=['GET'])
@@ -145,32 +207,6 @@ def health_check():
         "routes": [str(rule) for rule in app.url_map.iter_rules()]
     })
 
-@app.errorhandler(500)
-def handle_500_error(e):
-    logger.error(f"Internal server error: {str(e)}")
-    return jsonify({
-        "error": "Internal server error",
-        "message": str(e)
-    }), 500
-
-@app.errorhandler(404)
-def handle_404_error(e):
-    logger.warning(f"Route not found: {request.url}")
-    return jsonify({
-        "error": "Not found",
-        "message": f"Route {request.url} not found"
-    }), 404
-
-# Log all registered routes after they're defined
-logger.info("Registered routes:")
-def log_routes():
-    for rule in app.url_map.iter_rules():
-        logger.info(f"Route: {rule.rule} Methods: {rule.methods}")
-
-# Call route logging after all routes are registered
-log_routes()
-
-# Add this new endpoint
 @app.route('/api/poll-site', methods=['GET'])
 def poll_site():
     global current_site  # We modify this global variable
