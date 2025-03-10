@@ -1,11 +1,8 @@
-from typing import Dict, Any, List, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from sdk import MeasurementDTO
+from typing import Dict, Any, List
 from config.config import load_config
 from utils.timestamp import get_utc_timestamp, get_utc_offset
 from utils.logger import get_logger
-from sdk import MeasurementDTO  # Updated import
+from sdk.dto import MeasurementDTO  
 
 logger = get_logger('MetricFormatter')
 config = load_config()

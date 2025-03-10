@@ -1,5 +1,4 @@
 import time
-import threading
 import requests
 from collections import deque
 from typing import Dict, Any, List
@@ -9,10 +8,11 @@ from collectors.collector_registry import CollectorRegistry
 from collectors.system_collector import SystemCollector
 from collectors.crypto_collector import CryptoCollector
 from config.config import load_config
-from open_browser import open_trading_site
 import traceback
 from metric_queue.site_poller import SitePoller
-from collectors.metric_formatter import MetricFormatter  # New import
+from sdk.metric_formatter import MetricFormatter  # Correct import
+from sdk.metrics_api import MetricsAPI
+from sdk.dto import MeasurementDTO  # Ensure correct import
 
 logger = get_logger('QueueManager')
 
@@ -40,6 +40,7 @@ class UploaderQueue:
         self.queue = deque(maxlen=self.max_queue_size)
         self.running = True
         self.metric_formatter = MetricFormatter()  # New instance
+        self.metrics_api = MetricsAPI(self.server_url, self.api_metrics_endpoint, self.timeout)  # New instance
 
     def format_metrics(self, raw_metrics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Format raw metrics using transform rules based on collector type"""
@@ -68,22 +69,15 @@ class UploaderQueue:
     def upload_from_queue(self) -> None:
         """Continuously uploads metrics from the queue at upload_interval"""
         while self.running:
-            if len(self.queue) < 9:
+            if len(self.queue) < self.batch_size:
                 logger.info(f"Queue size ({len(self.queue)}) is less than {self.batch_size}, waiting for a full batch.")
             else:
                 try:
                     data_to_upload = list(self.queue)[:self.batch_size]
 
-                    url = f"{self.server_url}/{self.api_metrics_endpoint}"
-                    logger.debug(f"Uploading to {url} with {len(data_to_upload)} metrics")
+                    logger.debug(f"Uploading to {self.server_url}/{self.api_metrics_endpoint} with {len(data_to_upload)} metrics")
 
-                    response = requests.post(
-                        url,
-                        json=data_to_upload,
-                        headers={'Content-Type': 'application/json'},
-                        timeout=self.timeout
-                    )
-                    response.raise_for_status()
+                    self.metrics_api.post_metrics(data_to_upload)
 
                     # Remove uploaded metrics from queue
                     for _ in range(len(data_to_upload)):

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from models.DTO import MeasurementDTO
+from sdk.dto import MeasurementDTO
 from models.db_models import MetricMeasurement
 from models.db_models import Device
 from sqlalchemy.orm import sessionmaker, scoped_session, joinedload

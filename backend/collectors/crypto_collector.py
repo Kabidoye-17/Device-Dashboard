@@ -1,5 +1,4 @@
 import requests
-from models.DTO import CryptoMetricDTO
 from utils.logger import get_logger
 from collectors.base_collector import BaseCollector
 from config.config import load_config
@@ -33,18 +32,18 @@ class CryptoCollector(BaseCollector):
             response.raise_for_status()
             data = response.json()
 
-            cryptometric = CryptoMetricDTO(
-                collector_type=self.collector_type, 
-                device_id=self.device_id,
-                device_name=self.device_name,
-                currency_pair=pair,
-                price=data['price'],
-                bid=data['bid'],
-                ask=data['ask']
-            ).serialize()
+            crypto_metric = {
+                'collector_type': self.collector_type,
+                'device_id': self.device_id,
+                'device_name': self.device_name,
+                'currency_pair': pair,
+                'price': round(float(data['price']), 2),
+                'bid': round(float(data['bid']), 2),
+                'ask': round(float(data['ask']), 2)
+            }
 
-            logger.info(f"Fetched metrics for {pair}: {cryptometric}")
-            return cryptometric
+            logger.info(f"Fetched metrics for {pair}: {crypto_metric}")
+            return crypto_metric
         except Exception as e:
             logger.error(f"Error fetching {pair}: {str(e)}")
             return None

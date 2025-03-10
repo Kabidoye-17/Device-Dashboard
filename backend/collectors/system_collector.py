@@ -1,6 +1,5 @@
 import socket
 import psutil
-from models.DTO import SystemMetricDTO
 from config.config import load_config
 from utils.logger import get_logger
 from collectors.base_collector import BaseCollector
@@ -27,14 +26,14 @@ class SystemCollector(BaseCollector):
         try:
             network = psutil.net_io_counters()
 
-            metrics = SystemMetricDTO(
-                collector_type=self.collector_type,
-                device_id=self.device_id,
-                device_name=self.device_name,
-                cpu_load=psutil.cpu_percent(),
-                ram_usage=psutil.virtual_memory().percent,
-                network_sent=network.bytes_sent
-            ).serialize()
+            metrics = {
+                'collector_type': self.collector_type,
+                'device_id': self.device_id,
+                'device_name': self.device_name,
+                'cpu_load': round(psutil.cpu_percent(interval=1), 2),
+                'ram_usage': round(psutil.virtual_memory().percent, 2),
+                'network_sent': round(network.bytes_sent / (1024 * 1024), 2)
+            }
 
             self.latest_metrics = metrics
             logger.info(f"Collected system metrics: {metrics}")
