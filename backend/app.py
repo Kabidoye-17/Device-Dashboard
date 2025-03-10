@@ -40,7 +40,7 @@ except Exception as e:
 
 collector_types = config.collector_types
 collector_type_values = {field.name: getattr(collector_types, field.name) for field in dataclasses.fields(collector_types)}
-metrics_cache = {metric_type: CachedData(cache_duration_seconds=30) for metric_type in collector_type_values.values()}
+metrics_cache = {metric_type: CachedData(cache_duration_seconds=15) for metric_type in collector_type_values.values()}
 current_site = None
 
 @app.route('/api/metrics/upload-metrics', methods=['POST'])

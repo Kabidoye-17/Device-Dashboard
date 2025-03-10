@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from models.measurement import Measurement
+from models.DTO import MeasurementDTO
 from models.db_models import MetricMeasurement
 from models.db_models import Device
 from sqlalchemy.orm import sessionmaker, scoped_session, joinedload
@@ -101,7 +101,7 @@ class MetricsReporter:
 
     def _convert_to_domain_models(self, metrics):
         return [
-            Measurement(
+            MeasurementDTO(
                 device_id=metric.device.device_id,
                 device_name=metric.device.details.device_name,
                 name=metric.name,

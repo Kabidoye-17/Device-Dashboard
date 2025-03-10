@@ -1,3 +1,3 @@
-from .measurement import Measurement
+from .DTO import MeasurementDTO
 
-__all__ = ['Measurement','Device','DeviceDetails','MetricMeasurement','MetricType','Unit']
+__all__ = ['MeasurementDTO','Device','DeviceDetails','MetricMeasurement','MetricType','Unit']

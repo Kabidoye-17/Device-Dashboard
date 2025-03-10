@@ -187,7 +187,7 @@ function App() {
 
   useEffect(() => {
     fetchSystemData();
-    const intervalId = setInterval(fetchSystemData, 15000);
+    const intervalId = setInterval(fetchSystemData, 5000);
 
     return () => clearInterval(intervalId);
     // eslint-disable-next-line
@@ -195,7 +195,7 @@ function App() {
 
   useEffect(() => {
     fetchCryptoData();
-    const intervalId = setInterval(fetchCryptoData, 15000);
+    const intervalId = setInterval(fetchCryptoData, 5000);
 
     return () => clearInterval(intervalId);
     // eslint-disable-next-line

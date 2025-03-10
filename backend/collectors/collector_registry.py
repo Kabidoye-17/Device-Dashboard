@@ -13,6 +13,7 @@ class CollectorRegistry:
     def register(self, name: str, collector: BaseCollector) -> None:
         """Register a new collector."""
         if not isinstance(collector, BaseCollector):
+            logger.error(f"Collector must inherit from BaseCollector: {collector}")
             raise ValueError(f"Collector must inherit from BaseCollector: {collector}")
         
         self.collectors[name] = collector
