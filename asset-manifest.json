@@ -1,13 +1,13 @@
 {
   "files": {
     "main.css": "/Device-Dashboard/static/css/main.e6c13ad2.css",
-    "main.js": "/Device-Dashboard/static/js/main.51dd2a42.js",
+    "main.js": "/Device-Dashboard/static/js/main.ecc5df57.js",
     "index.html": "/Device-Dashboard/index.html",
     "main.e6c13ad2.css.map": "/Device-Dashboard/static/css/main.e6c13ad2.css.map",
-    "main.51dd2a42.js.map": "/Device-Dashboard/static/js/main.51dd2a42.js.map"
+    "main.ecc5df57.js.map": "/Device-Dashboard/static/js/main.ecc5df57.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.51dd2a42.js"
+    "static/js/main.ecc5df57.js"
   ]
 }
