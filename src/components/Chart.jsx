@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,9 +12,9 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import 'chartjs-adapter-date-fns';
-import {  Button} from '../styles/StyledComponents';
-import { MetricHeading } from '../styles/StyledComponents';
+import { Button, MetricHeading } from '../styles/StyledComponents';
 import { tradingSites, apiUrl } from '../config';
+import Loading from './Loading';
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -92,10 +92,12 @@ const generateDatasets = (cryptoData, type) => {
 };
 
 const Chart = ({ cryptoData }) => {
+  const [loading, setLoading] = useState(false);
   const cryptoTypes = [...new Set(cryptoData.map(item => item.name.split('-')[0]))];
 
   const openTradingSite = async (type) => {
     const site = type === 'BTC' ? tradingSites.BTC : tradingSites.ETH;
+    setLoading(true);
     try {
       const response = await fetch(`${apiUrl}/api/recieve-site`, {
         method: 'POST',
@@ -110,11 +112,15 @@ const Chart = ({ cryptoData }) => {
       }
     } catch (error) {
       console.error('Error making request:', error);
+    } finally {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      setLoading(false);
     }
   };
 
   return (
     <div style={{ overflowX: 'hidden' }}>
+      {loading && <Loading />}
       {cryptoTypes.map(type => {
         const typeData = cryptoData.filter(item => item.name.split('-')[0] === type);
         const { datasets, min, max } = generateDatasets(typeData, type);

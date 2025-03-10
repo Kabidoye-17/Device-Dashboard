@@ -55,8 +55,14 @@ export const RetryButton = styled.button`
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
   &:hover {
     background: #0056b3;
+    transform: scale(1.05);
+  }
+  &:active {
+    background: #004494;
+    transform: scale(0.95);
   }
 `;
 
@@ -107,9 +113,9 @@ export const MetricHeading = styled.div`
 
 /* CSS */
 export const Button = styled.button`
- background: #009879;
+  background: #009879;
   border-radius: 999px;
-  box-shadow:rgb(1, 71, 57) 0 10px 20px -10px;
+  box-shadow: rgb(1, 71, 57) 0 10px 20px -10px;
   box-sizing: border-box;
   color: #FFFFFF;
   cursor: pointer;
@@ -127,4 +133,13 @@ export const Button = styled.button`
   width: fit-content;
   word-break: break-word;
   border: 0;
+  transition: background 0.3s ease, transform 0.2s ease;
+  &:hover {
+    background: #007bff;
+    transform: scale(1.05);
+  }
+  &:active {
+    background: #0056b3;
+    transform: scale(0.95);
+  }
 `;
