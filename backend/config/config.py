@@ -126,10 +126,18 @@ def load_config():
         with open(config_path, 'r') as f:
             config_data = json.load(f)
         
+        db_username = os.getenv("DB_USERNAME", config_data['database']['username'])
+        db_password = os.getenv("DB_PASSWORD", config_data['database']['password'])
+
         return Config(
             SECRET_KEY=config_data.get('SECRET_KEY', ''),
             SQLALCHEMY_TRACK_MODIFICATIONS=config_data.get('SQLALCHEMY_TRACK_MODIFICATIONS', False),
-            database=DatabaseConfig(**config_data['database']),
+            database=DatabaseConfig(
+                username=db_username,
+                password=db_password,
+                host=config_data['database']['host'],
+                name=config_data['database']['name']
+            ),
             logging=LoggingConfig(
                 console_output=ConsoleLoggingConfig(**config_data['logging']['console_output']),
                 file_output=FileLoggingConfig(**config_data['logging']['file_output'])
