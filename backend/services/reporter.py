@@ -7,6 +7,7 @@ from services.db_models import Device
 from sqlalchemy.orm import sessionmaker, scoped_session, joinedload
 from utils.logger import get_logger
 import sqlalchemy as sa
+from utils.timer import Timer  # Import Timer utility
 
 logger = get_logger(__name__)
 
@@ -55,7 +56,7 @@ class MetricsReporter:
             return False
 
     def get_all_latest_metrics(self, metric_type=None):
-        with self as session:
+        with Timer("get_all_latest_metrics"), self as session:  # Add Timer context manager
             try:
                 query = self._build_base_query(session, metric_type)
                 

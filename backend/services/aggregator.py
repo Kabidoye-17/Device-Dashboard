@@ -4,6 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .db_models import Base, Device, MetricType, Unit, MetricMeasurement, DeviceDetails
 from utils.logger import get_logger
 import sqlalchemy as sa
+from utils.timer import Timer  # Import Timer utility
 
 logger = get_logger(__name__)
 
@@ -73,7 +74,7 @@ class DatabaseAggregator:
             raise
 
     def store_metrics(self, metrics_data):
-        with self as session:
+        with Timer("store_metrics"), self as session:  # Add Timer context manager
             try:
                 logger.info(f"Storing {len(metrics_data)} metrics")
 
