@@ -1,7 +1,7 @@
 {
     "database": {
-        "username": "Kabidoye17",
-        "password": "Metricsdbpassword",
+        "username": "${DB_USERNAME}",
+        "password": "${DB_PASSWORD}",
         "host": "Kabidoye17.mysql.pythonanywhere-services.com",
         "name": "Kabidoye17$Metrics"
     },
@@ -30,9 +30,21 @@
             "network_sent": {"name": "Network Sent", "unit": "MB"}
         },
         "crypto": {
-            "price": {"name": "{pair} Price", "unit": "USD"},
-            "bid": {"name": "{pair} Bid", "unit": "USD"},
-            "ask": {"name": "{pair} Ask", "unit": "USD"}
+            "price": {
+                "name": "{pair} Price",
+                "unit": "USD",
+                "format": {"pair": "currency_pair"}
+            },
+            "bid": {
+                "name": "{pair} Bid",
+                "unit": "USD",
+                "format": {"pair": "currency_pair"}
+            },
+            "ask": {
+                "name": "{pair} Ask",
+                "unit": "USD",
+                "format": {"pair": "currency_pair"}
+            }
         }
     },
     "crypto_collector": {
@@ -50,10 +62,11 @@
     "server": {
         "url": "http://Kabidoye17.pythonanywhere.com",
         "timeout": 5,
-        "collection_interval": 5,
-        "upload_interval": 10,
+        "collect_upload_interval": 5,
         "max_queue_size": 500,
         "batch_size": 9,
+        "polling_endpoint": "/api/poll-site",
+        "polling_interval": 10,
         "api_metrics_endpoint": "api/metrics/upload-metrics"
     }
 }

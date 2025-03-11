@@ -113,7 +113,7 @@ const Chart = ({ cryptoData }) => {
     } catch (error) {
       console.error('Error making request:', error);
     } finally {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       setLoading(false);
     }
   };

@@ -1,7 +1,8 @@
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 import logging
 
 @dataclass
@@ -47,6 +48,7 @@ class DatabaseConfig:
 class MetricConfig:
     name: str
     unit: str
+    format: Optional[Dict[str, str]] = None
 
 @dataclass
 class SystemMetricsConfig:
@@ -79,10 +81,11 @@ class TransformRulesConfig:
 class ServerConfig:
     url: str
     timeout: int
-    collection_interval: int
-    upload_interval: int
+    collect_upload_interval: int
     max_queue_size: int
     batch_size: int
+    polling_endpoint: str
+    polling_interval: int
     api_metrics_endpoint: str
 
 @dataclass
@@ -98,8 +101,6 @@ class CryptoCollectorConfig:
 class CollectorTypesConfig:
     system: str
     crypto: str
-
-
 
 @dataclass
 class Config:
@@ -124,7 +125,11 @@ def load_config():
     try:
         with open(config_path, 'r') as f:
             config_data = json.load(f)
-            
+        
+        # Read database credentials from environment variables
+        config_data['database']['username'] = os.getenv('DB_USERNAME', config_data['database']['username'])
+        config_data['database']['password'] = os.getenv('DB_PASSWORD', config_data['database']['password'])
+        
         return Config(
             SECRET_KEY=config_data.get('SECRET_KEY', ''),
             SQLALCHEMY_TRACK_MODIFICATIONS=config_data.get('SQLALCHEMY_TRACK_MODIFICATIONS', False),

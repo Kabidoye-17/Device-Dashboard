@@ -1,5 +1,6 @@
 from typing import Dict, Any, List
-from config.config import load_config
+
+from config.config import load_config, MetricConfig
 from utils.timestamp import get_utc_timestamp, get_utc_offset
 from utils.logger import get_logger
 from sdk.dto import MeasurementDTO  
@@ -13,6 +14,15 @@ class MetricFormatter:
         self.crypto = config.collector_types.crypto
 
     def format(self, raw_metrics: List[Dict[str, Any]]) -> List[MeasurementDTO]:
+        """
+        Formats raw metrics into a list of MeasurementDTO objects based on the transform rules.
+
+        Args:
+            raw_metrics (List[Dict[str, Any]]): A list of raw metric dictionaries to be formatted.
+
+        Returns:
+            List[MeasurementDTO]: A list of formatted MeasurementDTO objects.
+        """
         formatted_metrics = []
         
         for metric in raw_metrics:
@@ -33,9 +43,9 @@ class MetricFormatter:
                     if field in metric:
                         try:
                             name = rule.name
-                            # Handle special formatting for crypto pairs
-                            if collector_type == self.crypto and '{pair}' in name:
-                                name = name.format(pair=metric['currency_pair'])
+                            # Apply special formatting if specified in the rule
+                            if rule.format:
+                                name = name.format(**{k: metric[v] for k, v in rule.format.items()})
                             
                             measurement = MeasurementDTO(
                                 device_id=metric['device_id'],

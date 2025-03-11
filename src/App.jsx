@@ -24,8 +24,15 @@ function App() {
   const [availableDevices, setAvailableDevices] = useState([]);
   const [cryptoGraphData, setCryptoGraphData] = useState([]);
 
-  const toggleSystemTable = () => setShowSystemTable(!showSystemTable);
-  const toggleCryptoTable = () => setShowCryptoTable(!showCryptoTable);
+  const toggleSystemTable = () => {
+    setShowSystemTable(!showSystemTable);
+    setCurrentSystemPage(0);
+  };
+
+  const toggleCryptoTable = () => {
+    setShowCryptoTable(!showCryptoTable);
+    setCurrentCryptoPage(0);
+  };
 
   const handleDeviceChange = (event) => {
     const newDevice = event.target.value;
@@ -55,6 +62,19 @@ function App() {
     }));
   };
 
+  const updateGaugeMetric = (formattedLatestData) => {
+    const firstPercentageMetric = formattedLatestData.find(metric => metric.unit === '%');
+    if (!selectedMetricName && firstPercentageMetric) {
+      setSelectedMetricValue(firstPercentageMetric.value);
+      setSelectedMetricName(firstPercentageMetric.name);
+    } else if (selectedMetricName) {
+      const updatedMetric = formattedLatestData.find(metric => metric.name === selectedMetricName);
+      if (updatedMetric) {
+        setSelectedMetricValue(updatedMetric.value);
+      }
+    }
+  };
+
   const fetchSystemData = async () => {
     try {
       const response = await fetch(`${apiUrl}/api/metrics/get-latest-metrics?metric_type=system&page_number=${currentSystemPage + 1}`);
@@ -63,7 +83,7 @@ function App() {
       const latestMetrics = data.latest_metric;
       const totalPages = data.total_pages;
 
-      setTotalSystemPages(totalPages ? totalPages : 0);
+      setTotalSystemPages(totalPages || 0);
 
       if (allPaginatedData && allPaginatedData.length > 0) {
         const formattedPaginatedData = formatData(allPaginatedData);
@@ -83,16 +103,7 @@ function App() {
             return metricOrder[a.name] - metricOrder[b.name];
           });
 
-        const firstPercentageMetric = formattedLatestData.find(metric => metric.unit === '%');
-        if (!selectedMetricName && firstPercentageMetric) {
-          setSelectedMetricValue(firstPercentageMetric.value);
-          setSelectedMetricName(firstPercentageMetric.name);
-        } else if (selectedMetricName) {
-          const updatedMetric = formattedLatestData.find(metric => metric.name === selectedMetricName);
-          if (updatedMetric) {
-            setSelectedMetricValue(updatedMetric.value);
-          }
-        }
+        updateGaugeMetric(formattedLatestData);
 
         const uniqueDevices = [...new Set(formattedLatestData.map(metric => metric.deviceName))];
         setAvailableDevices(uniqueDevices);
@@ -119,7 +130,7 @@ function App() {
       const latestMetrics = data.latest_metric;
       const totalPages = data.total_pages;
 
-      setTotalCryptoPages(totalPages ? totalPages : 0);
+      setTotalCryptoPages(totalPages || 0);
 
       if (allPaginatedData && allPaginatedData.length > 0) {
         const formattedPaginatedData = formatData(allPaginatedData);
@@ -155,26 +166,18 @@ function App() {
             return cryptoMetricOrder[metricA] - cryptoMetricOrder[metricB];
           });
 
-        const firstPercentageMetric = formattedLatestData.find(metric => metric.unit === '%');
-        if (!selectedMetricName && firstPercentageMetric) {
-          setSelectedMetricValue(firstPercentageMetric.value);
-          setSelectedMetricName(firstPercentageMetric.name);
-        } else if (selectedMetricName) {
-          const updatedMetric = formattedLatestData.find(metric => metric.name === selectedMetricName);
-          if (updatedMetric) {
-            setSelectedMetricValue(updatedMetric.value);
-          }
-        }
+        updateGaugeMetric(formattedLatestData);
 
         setHistoricalCryptoData(cryptoData);
         setCryptoMetrics(formattedLatestData);
 
-        // Update cryptoGraphData
         setCryptoGraphData(prevData => {
           const newData = formattedLatestData.filter(metric => 
             !prevData.some(prevMetric => prevMetric.timestamp_utc === metric.timestamp_utc)
           );
-          return [...prevData, ...newData];
+          const combinedData = [...prevData, ...newData];
+          const latestData = combinedData.slice(-60); // Keep only the latest 30 metrics (10 sets of Price, Ask, Bid)
+          return latestData;
         });
       } else {
         setHistoricalCryptoData([]);
@@ -187,7 +190,7 @@ function App() {
 
   useEffect(() => {
     fetchSystemData();
-    const intervalId = setInterval(fetchSystemData, 5000);
+    const intervalId = setInterval(fetchSystemData, 2000);
 
     return () => clearInterval(intervalId);
     // eslint-disable-next-line
@@ -195,7 +198,7 @@ function App() {
 
   useEffect(() => {
     fetchCryptoData();
-    const intervalId = setInterval(fetchCryptoData, 5000);
+    const intervalId = setInterval(fetchCryptoData, 2000);
 
     return () => clearInterval(intervalId);
     // eslint-disable-next-line

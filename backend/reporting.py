@@ -96,8 +96,8 @@ class MetricsReporter:
         return session.query(sa.func.max(MetricMeasurement.timestamp_utc)).scalar()
 
     def _apply_time_filter(self, query, latest_timestamp):
-        ten_minutes_ago = latest_timestamp - timedelta(minutes=10)
-        return query.filter(MetricMeasurement.timestamp_utc >= ten_minutes_ago)
+        five_minutes_ago = latest_timestamp - timedelta(minutes=5)
+        return query.filter(MetricMeasurement.timestamp_utc >= five_minutes_ago)
 
     def _convert_to_domain_models(self, metrics):
         return [

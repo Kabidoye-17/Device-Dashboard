@@ -9,10 +9,8 @@ from collectors.system_collector import SystemCollector
 from collectors.crypto_collector import CryptoCollector
 from config.config import load_config
 import traceback
-from metric_queue.site_poller import SitePoller
-from sdk.metric_formatter import MetricFormatter  # Correct import
+from sdk.metric_formatter import MetricFormatter
 from sdk.metrics_api import MetricsAPI
-from sdk.dto import MeasurementDTO  # Ensure correct import
 
 logger = get_logger('QueueManager')
 
@@ -26,8 +24,7 @@ class UploaderQueue:
         self.api_metrics_endpoint = config.server.api_metrics_endpoint
         self.crypto = config.collector_types.crypto
         self.system = config.collector_types.system
-        self.collection_interval = config.server.collection_interval
-        self.upload_interval = config.server.upload_interval
+        self.collect_upload_interval = config.server.collect_upload_interval
         self.batch_size = config.server.batch_size
         self.timeout = config.server.timeout
         self.max_queue_size = config.server.max_queue_size
@@ -39,7 +36,7 @@ class UploaderQueue:
 
         self.queue = deque(maxlen=self.max_queue_size)
         self.running = True
-        self.metric_formatter = MetricFormatter()  # New instance
+        self.metric_formatter = MetricFormatter()  
         self.metrics_api = MetricsAPI(self.server_url, self.api_metrics_endpoint, self.timeout)  # New instance
 
     def format_metrics(self, raw_metrics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -64,7 +61,7 @@ class UploaderQueue:
                 logger.error(f"Error in collection cycle: {str(e)}")
                 logger.error(traceback.format_exc())
 
-            time.sleep(self.collection_interval)
+            time.sleep(self.collect_upload_interval)
 
     def upload_from_queue(self) -> None:
         """Continuously uploads metrics from the queue at upload_interval"""
@@ -90,5 +87,5 @@ class UploaderQueue:
                     if hasattr(e.response, 'text'):
                         logger.error(f"Server response: {e.response.text}")
 
-            time.sleep(self.upload_interval)
+            time.sleep(self.collect_upload_interval)
 
