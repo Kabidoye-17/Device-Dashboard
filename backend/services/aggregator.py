@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SQLAlchemyError
-from db_models import Base, Device, MetricType, Unit, MetricMeasurement, DeviceDetails
+from .db_models import Base, Device, MetricType, Unit, MetricMeasurement, DeviceDetails
 from utils.logger import get_logger
 import sqlalchemy as sa
 
@@ -32,7 +32,7 @@ class DatabaseAggregator:
 
     def __exit__(self, exc_type, exc_value, traceback):
         try:
-            if exc_type:
+            if (exc_type):
                 self.session.rollback()
             else:
                 self.session.commit()
@@ -85,7 +85,7 @@ class DatabaseAggregator:
 
                 for metric in metrics_data:
                     logger.debug(f"Processing metric: {metric.get('name', 'Unknown')}, Value: {metric.get('value', 'N/A')}")
-                    
+
                     metric_value = self._validate_metric_value(metric)
                     if metric_value is None:
                         continue
@@ -93,7 +93,7 @@ class DatabaseAggregator:
                     metric_type = self._get_or_create_cached(session, MetricType, {"name": str(metric.get("type", "system"))}, metric_type_cache)
                     unit = self._get_or_create_cached(session, Unit, {"unit_name": str(metric.get("unit", "unknown"))}, unit_cache)
                     device = self._get_or_create_cached(session, Device, {"device_id": str(metric.get("device_id", "unknown"))}, device_cache)
-                    
+
                     self._get_or_create_cached(session, DeviceDetails, {"device_id": device.device_id}, device_details_cache,
                         defaults={"device_name": str(metric.get("device_name", "unknown"))})
 
