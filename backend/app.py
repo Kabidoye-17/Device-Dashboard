@@ -18,10 +18,7 @@ app.config.from_object(config)
 
 # Setup logging after config is loaded
 logger = setup_logger(config)
-logger.info("Logger initialized with configuration")
-
-# Add debug logging right after app initialization
-logger.info("Initializing Flask routes...")
+logger.info("Logger initialized with configuration & flask routes")
 
 # Initialize aggregator
 try:
@@ -31,6 +28,7 @@ except Exception as e:
     logger.critical(f"Failed to initialize database aggregator: {str(e)}")
     raise
 
+# Initialize metrics reporter
 try:
     metrics_reporter = MetricsReporter(config.SQLALCHEMY_DATABASE_URI)
     logger.info("Metrics reporter initialized successfully")

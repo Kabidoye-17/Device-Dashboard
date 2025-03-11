@@ -56,13 +56,25 @@ class MetricsReporter:
             return False
 
     def get_all_latest_metrics(self, metric_type=None):
+        """
+        Retrieve the latest metrics of the given type from the database.
+
+        Args:
+            metric_type (str): The type of metric to retrieve. If None, all metrics are retrieved.
+
+        Returns:
+            tuple: A tuple containing the list of retrieved metrics and a count of the total number of metrics retrieved.
+
+        Raises:
+            SQLAlchemyError: If an error occurs while fetching the metrics.
+        """
         with Timer("get_all_latest_metrics"), self as session:  # Add Timer context manager
             try:
                 three_days_ago = datetime.now(timezone.utc) - timedelta(days=3)
 
                 query = self._build_base_query(session, metric_type)
                 query = query.filter(MetricMeasurement.timestamp_utc >= three_days_ago)
-                query = query.limit(120)  # Fetch the latest 120 metrics
+                query = query.limit(120) 
                 metrics = query.all()
                 
                 measurements = self._convert_to_domain_models(metrics)

@@ -23,6 +23,15 @@ class CachedData:
         self.lock.release()
 
     def is_expired(self) -> bool:
+        """Determine if the cache is expired, with thread-safe update handling.
+
+        If an update is in progress, consider the cache expired if the update has taken more than twice the
+        cache duration. If the update is still in progress but has not taken too long, consider the cache
+        valid if there is existing data, or expired if there is no existing data.
+
+        Returns:
+            bool: True if the cache is expired, False otherwise.
+        """
         assert(self.lock.locked())
         cache_age_seconds = time.monotonic() - self.last_updated
         if cache_age_seconds < self.cache_duration_seconds:

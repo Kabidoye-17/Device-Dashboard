@@ -48,7 +48,24 @@ class DatabaseAggregator:
             self.Session.remove()
         except Exception as e:
             logger.error(f"Error cleaning up session: {str(e)}")
+
     def get_or_create(self, session, model, filter_by, defaults=None, cache=None):
+        """
+        Retrieve an existing database record that matches the given filter criteria, or create a new one if it does not exist.
+
+        Args:
+            session (Session): The SQLAlchemy session to use for database operations.
+            model (Base): The SQLAlchemy model class representing the database table.
+            filter_by (dict): A dictionary of field names and values to filter the query by.
+            defaults (dict, optional): A dictionary of default values to use when creating a new record. Defaults to None.
+            cache (dict, optional): An optional cache dictionary to store and retrieve instances. Defaults to None.
+
+        Returns:
+            instance (Base): The retrieved or newly created instance of the model.
+
+        Raises:
+            SQLAlchemyError: If there is an error during the database operation.
+        """
         defaults = defaults or {}
 
         cache_key = tuple(sorted(filter_by.items())) if cache is not None else None
@@ -75,8 +92,28 @@ class DatabaseAggregator:
             logger.error(f"Error in get_or_create for {model.__name__}: {str(e)}")
             raise
 
-
     def store_metrics(self, metrics_data):
+        """Store a list of metrics in the database. The input is a list of dictionaries
+        with the following keys:
+            - device_id: The ID of the device that reported the metric.
+            - device_name: The name of the device that reported the metric.
+            - type: The type of the metric.
+            - unit: The unit of the metric.
+            - name: The name of the metric.
+            - value: The value of the metric.
+            - timestamp_utc: The UTC timestamp of the metric.
+            - utc_offset: The UTC offset of the metric.
+
+        The method will validate the input and store the metrics in the database.
+        If there are any errors during the operation, the method will log the error
+        and raise an exception.
+
+        Args:
+            metrics_data (list): The list of metrics to store in the database.
+
+        Returns:
+            bool: True if the operation was successful, False otherwise.
+        """
         with Timer("store_metrics"), self as session:
             try:
                 logger.info(f"Processing {len(metrics_data)} metrics")

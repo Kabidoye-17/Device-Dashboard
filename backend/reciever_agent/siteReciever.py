@@ -29,7 +29,7 @@ class SitePoller:
         self.session = requests.Session()
 
     def poll_for_site_url(self) -> None:
-        """Continuously polls the server for a site to open, one at a time"""
+        """Continuously polls the server for a site ur; to open"""
         while self.running:
             try:
                 response = self.session.get(
