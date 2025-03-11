@@ -3,10 +3,10 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from utils.logger import get_logger, setup_logger
 import traceback
-from aggregator import DatabaseAggregator
+from services.aggregator import DatabaseAggregator
 from config.config import load_config
-from reporting import MetricsReporter
-from cache import CachedData, CacheUpdateManager
+from services.reporter import MetricsReporter
+from utils.cache import CachedData, CacheUpdateManager
 
 # Initialize application with config
 app = Flask(__name__)

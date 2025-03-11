@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
-from sdk.dto import MeasurementDTO
-from models.db_models import MetricMeasurement
-from models.db_models import Device
+from collector_agent.metrics_sdk.dto import MeasurementDTO
+from services.db_models import MetricMeasurement
+from services.db_models import Device
 from sqlalchemy.orm import sessionmaker, scoped_session, joinedload
 from utils.logger import get_logger
 import sqlalchemy as sa

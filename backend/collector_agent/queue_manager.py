@@ -4,13 +4,13 @@ from collections import deque
 from typing import Dict, Any, List
 from utils.timestamp import get_utc_timestamp, get_utc_offset
 from utils.logger import get_logger
-from collectors.collector_registry import CollectorRegistry
-from collectors.system_collector import SystemCollector
-from collectors.crypto_collector import CryptoCollector
+from .collectors.collector_registry import CollectorRegistry
+from .collectors.system_collector import SystemCollector
+from .collectors.crypto_collector import CryptoCollector
 from config.config import load_config
 import traceback
-from sdk.metric_formatter import MetricFormatter
-from sdk.metrics_api import MetricsAPI
+from .metrics_sdk.metric_formatter import MetricFormatter
+from .metrics_sdk.metrics_api import MetricsAPI
 
 logger = get_logger('QueueManager')
 

@@ -2,7 +2,7 @@ import socket
 import psutil
 from config.config import load_config
 from utils.logger import get_logger
-from collectors.base_collector import BaseCollector
+from .base_collector import BaseCollector
 import machineid
 
 

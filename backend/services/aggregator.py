@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, inspect
 from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.exc import SQLAlchemyError
-from models.db_models import Base, Device, MetricType, Unit, MetricMeasurement, DeviceDetails
+from db_models import Base, Device, MetricType, Unit, MetricMeasurement, DeviceDetails
 from utils.logger import get_logger
 import sqlalchemy as sa
 

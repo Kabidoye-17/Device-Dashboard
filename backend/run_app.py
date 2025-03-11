@@ -1,7 +1,7 @@
 import threading
 import time
-from queue_manager import UploaderQueue
-from recieve_site import SitePoller
+from collector_agent.queue_manager import UploaderQueue
+from reciever_agent.siteReciever import SitePoller
 from utils.logger import get_logger  # Import logger
 
 logger = get_logger('RunApp')  # Initialize logger

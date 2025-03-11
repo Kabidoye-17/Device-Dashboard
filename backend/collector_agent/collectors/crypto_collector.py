@@ -1,6 +1,6 @@
 import requests
 from utils.logger import get_logger
-from collectors.base_collector import BaseCollector
+from .base_collector import BaseCollector
 from config.config import load_config
 import machineid
 

@@ -1,5 +1,5 @@
 from typing import Dict, List, Any
-from collectors.base_collector import BaseCollector
+from .base_collector import BaseCollector
 from utils.logger import get_logger
 
 logger = get_logger('CollectorRegistry')

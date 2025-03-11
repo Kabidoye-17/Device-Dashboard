@@ -3,7 +3,7 @@ from typing import Dict, Any, List
 from config.config import load_config, MetricConfig
 from utils.timestamp import get_utc_timestamp, get_utc_offset
 from utils.logger import get_logger
-from sdk.dto import MeasurementDTO  
+from collector_agent.metrics_sdk.dto import MeasurementDTO  
 
 logger = get_logger('MetricFormatter')
 config = load_config()

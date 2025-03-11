@@ -6,7 +6,7 @@ from utils.logger import get_logger
 from config.config import load_config
 import webbrowser
 
-logger = get_logger('ReceiveSite')
+logger = get_logger('siteReciever')
 
 def open_trading_site(url: str) -> bool:
     """Opens the given URL in the default web browser"""
