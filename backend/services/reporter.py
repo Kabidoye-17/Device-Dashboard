@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
 from collector_agent.metrics_sdk.dto import MeasurementDTO
@@ -58,23 +58,16 @@ class MetricsReporter:
     def get_all_latest_metrics(self, metric_type=None):
         with Timer("get_all_latest_metrics"), self as session:  # Add Timer context manager
             try:
+                three_days_ago = datetime.now(timezone.utc) - timedelta(days=3)
+
                 query = self._build_base_query(session, metric_type)
-                
-                if not self._has_metrics(session, query):
-                    logger.warning("No metrics found in the database.")
-                    return [], 0
-
-                latest_timestamp = self._get_latest_timestamp(session)
-                if latest_timestamp is None:
-                    logger.warning("No metrics found in the database.")
-                    return [], 0
-
-                query = self._apply_time_filter(query, latest_timestamp)
+                query = query.filter(MetricMeasurement.timestamp_utc >= three_days_ago)
+                query = query.limit(120)  # Fetch the latest 120 metrics
                 metrics = query.all()
                 
                 measurements = self._convert_to_domain_models(metrics)
                 total_count = len(measurements)
-                logger.info(f"Retrieved all {total_count} metrics for the last 10 minutes")
+                logger.info(f"Retrieved the latest {total_count} metrics")
                 return measurements, total_count
             
             except SQLAlchemyError as e:
@@ -91,15 +84,8 @@ class MetricsReporter:
         return query
 
     def _has_metrics(self, session, query):
-        return session.query(query.exists()).scalar()
-
-    def _get_latest_timestamp(self, session):
-        return session.query(sa.func.max(MetricMeasurement.timestamp_utc)).scalar()
-
-    def _apply_time_filter(self, query, latest_timestamp):
-        five_minutes_ago = latest_timestamp - timedelta(minutes=5)
-        return query.filter(MetricMeasurement.timestamp_utc >= five_minutes_ago)
-
+        return session.query(query.limit(1)).first() is not None
+    
     def _convert_to_domain_models(self, metrics):
         return [
             MeasurementDTO(

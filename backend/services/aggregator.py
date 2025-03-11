@@ -48,65 +48,77 @@ class DatabaseAggregator:
             self.Session.remove()
         except Exception as e:
             logger.error(f"Error cleaning up session: {str(e)}")
+    def get_or_create(self, session, model, filter_by, defaults=None, cache=None):
+        defaults = defaults or {}
 
-    def get_or_create(self, session, model, filter_by, defaults={}, cache=None):
-        if cache is not None:
-            cache_key = tuple(sorted(filter_by.items()))  # Ensuring consistent order
-            if cache_key in cache:
-                return cache[cache_key]
+        cache_key = tuple(sorted(filter_by.items())) if cache is not None else None
+
+        # Check cache first
+        if cache and cache_key in cache:
+            return cache[cache_key]
 
         try:
+            # Try fetching from the database
             instance = session.query(model).filter_by(**filter_by).first()
-            if instance:
-                return instance
+            if not instance:
+                instance = model(**filter_by, **defaults)
+                session.add(instance)
+                session.flush() 
 
-            instance = model(**filter_by, **defaults)
-            session.add(instance)
-            session.flush()  # Ensures instance is persisted before returning
-            logger.debug(f"Created new {model.__name__}: {filter_by} {defaults}")
-            
+            # Store in cache if applicable
             if cache is not None:
                 cache[cache_key] = instance
+
             return instance
+
         except SQLAlchemyError as e:
-            session.rollback()
             logger.error(f"Error in get_or_create for {model.__name__}: {str(e)}")
             raise
 
+
     def store_metrics(self, metrics_data):
-        with Timer("store_metrics"), self as session:  # Add Timer context manager
+        with Timer("store_metrics"), self as session:
             try:
-                logger.info(f"Storing {len(metrics_data)} metrics")
+                logger.info(f"Processing {len(metrics_data)} metrics")
 
-                metric_type_cache = {}
-                unit_cache = {}
-                device_cache = {}
-                device_details_cache = {}
+                # Using dict for caching fetched objects
+                metric_type_cache, unit_cache, device_cache, device_details_cache = {}, {}, {}, {}
+
                 measurements = []
-
                 for metric in metrics_data:
-                    logger.debug(f"Processing metric: {metric.get('name', 'Unknown')}, Value: {metric.get('value', 'N/A')}")
-
                     metric_value = self._validate_metric_value(metric)
                     if metric_value is None:
-                        continue
+                        continue  # Skip invalid metrics
 
-                    metric_type = self._get_or_create_cached(session, MetricType, {"name": str(metric.get("type", "system"))}, metric_type_cache)
-                    unit = self._get_or_create_cached(session, Unit, {"unit_name": str(metric.get("unit", "unknown"))}, unit_cache)
-                    device = self._get_or_create_cached(session, Device, {"device_id": str(metric.get("device_id", "unknown"))}, device_cache)
+                    metric_type = self._get_or_create_cached(session, MetricType, 
+                                                            {"name": str(metric.get("type", "system"))}, 
+                                                            metric_type_cache)
+                    unit = self._get_or_create_cached(session, Unit, 
+                                                    {"unit_name": str(metric.get("unit", "unknown"))}, 
+                                                    unit_cache)
+                    device = self._get_or_create_cached(session, Device, 
+                                                        {"device_id": str(metric.get("device_id", "unknown"))}, 
+                                                        device_cache)
 
-                    self._get_or_create_cached(session, DeviceDetails, {"device_id": device.device_id}, device_details_cache,
-                        defaults={"device_name": str(metric.get("device_name", "unknown"))})
+                    # Avoid unnecessary object creation if device already exists
+                    if device.device_id not in device_details_cache:
+                        self._get_or_create_cached(session, DeviceDetails, 
+                                                {"device_id": device.device_id}, 
+                                                device_details_cache,
+                                                defaults={"device_name": str(metric.get("device_name", "unknown"))})
 
                     measurements.append(self._prepare_measurement(metric, device, metric_type, unit, metric_value))
 
-                self._bulk_insert_measurements(session, measurements)
+                if measurements:
+                    self._bulk_insert_measurements(session, measurements)
+
                 return True
 
             except Exception as e:
                 session.rollback()
                 logger.error(f"Error storing metrics: {str(e)}")
                 raise
+
 
     def _validate_metric_value(self, metric):
         try:
