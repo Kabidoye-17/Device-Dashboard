@@ -1,7 +1,7 @@
 {
     "database": {
-        "username": "${DB_USERNAME}",
-        "password": "${DB_PASSWORD}",
+        "username": "Kabidoye17",
+        "password": "Metricsdbpassword",
         "host": "Kabidoye17.mysql.pythonanywhere-services.com",
         "name": "Kabidoye17$Metrics"
     },
